@@ -775,6 +775,27 @@ html,body{
 }
 </style>
 
+
+<style id="v14-unified-quick-css">
+.v10-q::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  pointer-events:none;
+}
+.v10-q{
+  position:relative;
+}
+.v10-q:active{
+  transform:scale(.96)!important;
+  filter:brightness(1.08);
+}
+.v10-q small{
+  opacity:.78!important;
+}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -859,9 +880,9 @@ html,body{
     <div class="hint v10-hint">動画を再生しながら「ここ！」で押すと、その瞬間に追加。</div>
 
     <div class="v10-quick-strip">
-      <button class="v10-q warning" data-add="warning" data-longpress="warning"><span>⚠️</span><b>WARNING</b><small>警告</small></button>
-      <button class="v10-q mission" data-add="mission" data-longpress="mission"><span>📘</span><b>MISSION</b><small>ミッション</small></button>
-      <button class="v10-q system" data-add="system" data-longpress="system"><span>💬</span><b>SYSTEM</b><small>EVENT</small></button>
+      <button class="v10-q warning" id="quickWarning" data-add="warning" data-longpress="warning"><span>⚠️</span><b>WARNING</b><small>標準素材</small></button>
+      <button class="v10-q mission" id="quickMission" data-add="mission" data-longpress="mission"><span>📘</span><b>MISSION</b><small>標準素材</small></button>
+      <button class="v10-q system" id="quickSystemEvent" data-add="system" data-longpress="system"><span>💬</span><b>SYSTEM</b><small>標準EVENT</small></button>
       <button class="v10-q hpdown" data-add="hp" data-longpress="hp"><span>❤️</span><b>HP減少</b><small>ダメージ</small></button>
       <button class="v10-q hpup" id="addHpHeal"><span>💚</span><b>HP回復</b><small>回復</small></button>
       <button class="v10-q effect" id="quickEffectShake"><span>〰️</span><b>揺らす</b><small>効果</small></button>
@@ -2156,6 +2177,62 @@ $$('[data-longpress]').forEach(btn=>{
   btn.addEventListener('click',e=>{
     if(fired){e.preventDefault();e.stopImmediatePropagation();fired=false;}
   },true);
+});
+
+
+// ===== v14: unified quick-add rule =====
+// Rule:
+// tap = add the standard item immediately at the current playhead
+// long press = keep the existing alternate/preset behavior
+
+function unifiedQuickDrive(key,label){
+  if(!duration)return toast('先に動画を入れてね');
+  addDriveAsset(key,label);
+}
+
+// Event buttons now call the actual standard Drive material directly.
+if($('#quickWarning')) $('#quickWarning').onclick=()=>unifiedQuickDrive('warning','WARNING');
+if($('#quickMission')) $('#quickMission').onclick=()=>unifiedQuickDrive('mission','MISSION');
+
+// SYSTEM EVENT default uses the standard IDENTIFIED event material.
+// Persistent SYSTEM LOG in the BASE remains separate.
+if($('#quickSystemEvent')) $('#quickSystemEvent').onclick=()=>unifiedQuickDrive('identified','IDENTIFIED');
+
+// HP / effects already follow "tap = immediate".
+// Make their defaults explicit and consistent.
+const quickHpDown=$('.v10-q.hpdown');
+if(quickHpDown) quickHpDown.onclick=()=>{
+  if(!duration)return toast('先に動画を入れてね');
+  const now=Math.round(hpAt(current));
+  const e=addEvent('hp',current,{from:now,to:Math.max(0,now-25),source:'quick-standard'});
+  toast(`${fmt(e.start)} に HP -25`);
+};
+
+if($('#addHpHeal')) $('#addHpHeal').onclick=()=>{
+  if(!duration)return toast('先に動画を入れてね');
+  const now=Math.round(hpAt(current));
+  const e=addEvent('hp',current,{from:now,to:Math.min(100,now+20),source:'quick-standard-heal'});
+  toast(`${fmt(e.start)} に HP +20`);
+};
+
+if($('#quickEffectShake')) $('#quickEffectShake').onclick=()=>prototypeAddEffect('shake');
+if($('#quickEffectSurprise')) $('#quickEffectSurprise').onclick=()=>prototypeAddEffect('surprise');
+
+// Futon is also a standard one-tap material.
+if($('#quickAddFuton')) $('#quickAddFuton').onclick=()=>unifiedQuickDrive('futon','掛け布団');
+
+// Material Add is the exception by design: tap opens the image picker/settings.
+// BGM/SE is also an exception: tap opens the sound picker because there are many choices.
+
+// Give user feedback when long-press alternative opens.
+$$('[data-longpress]').forEach(btn=>{
+  btn.addEventListener('pointerdown',()=>{
+    btn.classList.add('pressing');
+    clearTimeout(btn._pressUiTimer);
+    btn._pressUiTimer=setTimeout(()=>btn.classList.remove('pressing'),700);
+  });
+  btn.addEventListener('pointerup',()=>btn.classList.remove('pressing'));
+  btn.addEventListener('pointercancel',()=>btn.classList.remove('pressing'));
 });
 
 })();
