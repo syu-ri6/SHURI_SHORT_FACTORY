@@ -796,6 +796,19 @@ html,body{
 }
 </style>
 
+
+<style id="v15-export-css">
+.export-format-box{
+  margin-top:10px;padding:10px 12px;border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;background:rgba(255,255,255,.035)
+}
+.export-format-box span{display:block;font-size:9px;color:#a9a4c3}
+.export-format-box strong{display:block;margin-top:2px;font-size:14px}
+.export-format-box small{display:block;margin-top:3px;font-size:9px;color:#c6bfd9}
+.export-format-box.mp4{border-color:rgba(95,240,188,.45);box-shadow:0 0 18px rgba(95,240,188,.08)}
+.export-format-box.webm{border-color:rgba(255,190,90,.45);box-shadow:0 0 18px rgba(255,190,90,.08)}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -982,6 +995,11 @@ html,body{
 <div class="modal" id="exportModal"><div class="modal-card"><div class="modal-head"><h3>動画を書き出し</h3><button class="btn mini" data-close>閉じる</button></div><div class="modal-body">
   <div class="hint">ブラウザ上で動画を実時間再生しながら合成して録画します。40秒なら約40秒かかります。端末・Safariの対応状況により動画書き出しが使えない場合も、設計ログとプロジェクトJSONは保存できます。</div>
   <div class="field" style="margin-top:10px"><label>出力サイズ</label><select id="exportSize"><option value="540x960">540×960（軽い）</option><option value="720x1280">720×1280</option><option value="1080x1920">1080×1920（重い）</option></select></div>
+  <div class="export-format-box" id="exportFormatBox">
+    <span>出力形式</span>
+    <strong id="exportFormatLabel">確認中…</strong>
+    <small id="exportFormatNote">iPhoneではMP4を最優先します。</small>
+  </div>
   <div class="progress" id="exportProgress"><i></i></div>
   <div class="hint" id="exportStatus" style="margin:8px 0">準備OK</div>
   <button class="btn primary grow" id="startExport">書き出し開始</button>
@@ -1457,9 +1475,166 @@ $('#exportVideo').onclick=()=>{
   ].map(([k,v])=>`<div class="prototype-check-item"><b>${k}</b><span>${v}</span></div>`).join('');
   $('#factoryCheckModal').classList.add('show');
 };
-$('#startExport').onclick=async()=>{if(!duration)return toast('先に動画を入れてね');if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream){$('#exportStatus').textContent='このブラウザは動画書き出しに対応していません。PC版Chrome等で開くと使える可能性があります。';return}
- const [ew,eh]=$('#exportSize').value.split('x').map(Number),ec=document.createElement('canvas');ec.width=ew;ec.height=eh;const ex=ec.getContext('2d');const stream=ec.captureStream(30);let audioCtx=null,srcNode=null,dest=null;try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();srcNode=audioCtx.createMediaElementSource(video);dest=audioCtx.createMediaStreamDestination();srcNode.connect(dest);srcNode.connect(audioCtx.destination);dest.stream.getAudioTracks().forEach(t=>stream.addTrack(t))}catch(err){console.warn('audio capture unavailable',err)}
- const types=['video/mp4;codecs=h264,aac','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];let mime=types.find(x=>MediaRecorder.isTypeSupported(x))||'';let rec;try{rec=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:ew>=1080?12000000:ew>=720?7000000:4000000}:{videoBitsPerSecond:4000000})}catch(err){$('#exportStatus').textContent='録画エンコーダを開始できません: '+err.message;return}const chunks=[];rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};const old=video.currentTime,was=!video.paused;video.pause();await seekVideo(0);current=0;const prog=$('#exportProgress'),bar=prog.querySelector('i');prog.classList.add('show');$('#startExport').disabled=true;$('#exportStatus').textContent='0% 書き出し中…';let done=false;rec.onstop=()=>{const ext=(rec.mimeType||mime).includes('mp4')?'mp4':'webm';downloadBlob(new Blob(chunks,{type:rec.mimeType||mime||'video/webm'}),(videoFileName||'short').replace(/\.[^.]+$/,'')+'_factory.'+ext);done=true};rec.start(1000);await video.play();const startWall=performance.now();await new Promise(resolve=>{function loop(){current=video.currentTime;drawFrame(ex,ew,eh,current,video);render();const p=clamp(current/duration,0,1);bar.style.width=(p*100).toFixed(1)+'%';$('#exportStatus').textContent=`${Math.round(p*100)}% 書き出し中… ${fmt(current)} / ${fmt(duration)}`;if(video.ended||current>=duration-.03){resolve();return}requestAnimationFrame(loop)}loop()});video.pause();rec.stop();while(!done)await sleep(100);$('#exportStatus').textContent='完了。ファイルを保存しました。';$('#startExport').disabled=false;bar.style.width='100%';if(srcNode){try{srcNode.disconnect()}catch{}}if(audioCtx){try{await audioCtx.close()}catch{}}await seekVideo(old);setTime(old);if(was){video.play();playing=true;tick()}}
+const EXPORT_MIME_CANDIDATES=[
+  'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+  'video/mp4;codecs=avc1.4D401E,mp4a.40.2',
+  'video/mp4;codecs=avc1,mp4a.40.2',
+  'video/mp4',
+  'video/webm;codecs=vp9,opus',
+  'video/webm;codecs=vp8,opus',
+  'video/webm'
+];
+
+function getBestExportMime(){
+  if(!window.MediaRecorder)return '';
+  for(const type of EXPORT_MIME_CANDIDATES){
+    try{
+      if(MediaRecorder.isTypeSupported(type))return type;
+    }catch{}
+  }
+  return '';
+}
+
+function refreshExportFormatUI(){
+  const mime=getBestExportMime();
+  const box=$('#exportFormatBox'),label=$('#exportFormatLabel'),note=$('#exportFormatNote');
+  if(!box||!label||!note)return mime;
+  const isMp4=mime.includes('mp4');
+  box.classList.toggle('mp4',isMp4);
+  box.classList.toggle('webm',!!mime&&!isMp4);
+  if(isMp4){
+    label.textContent='MP4 ✓';
+    note.textContent='iPhoneで開きやすいMP4を使います。';
+  }else if(mime){
+    label.textContent='WebM';
+    note.textContent='このブラウザではMP4録画に対応していないためWebMになります。';
+  }else{
+    label.textContent='動画書き出し非対応';
+    note.textContent='このブラウザで使えるMediaRecorder形式が見つかりません。';
+  }
+  return mime;
+}
+
+$('#startExport').onclick=async()=>{
+  if(!duration)return toast('先に動画を入れてね');
+  if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream){
+    $('#exportStatus').textContent='このブラウザは動画書き出しに対応していません。';
+    return;
+  }
+
+  const requestedMime=refreshExportFormatUI();
+  if(!requestedMime){
+    $('#exportStatus').textContent='このブラウザで使える動画形式が見つかりません。';
+    return;
+  }
+
+  const [ew,eh]=$('#exportSize').value.split('x').map(Number);
+  const ec=document.createElement('canvas');
+  ec.width=ew;ec.height=eh;
+  const ex=ec.getContext('2d');
+  const stream=ec.captureStream(30);
+
+  let audioCtx=null,srcNode=null,dest=null;
+  try{
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    srcNode=audioCtx.createMediaElementSource(video);
+    dest=audioCtx.createMediaStreamDestination();
+    srcNode.connect(dest);
+    srcNode.connect(audioCtx.destination);
+    dest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
+  }catch(err){
+    console.warn('audio capture unavailable',err);
+  }
+
+  let rec=null;
+  let mime=requestedMime;
+  const bitrate=ew>=1080?12000000:ew>=720?7000000:4000000;
+
+  const recorderAttempts=[
+    requestedMime,
+    ...(requestedMime.includes('mp4')?['video/mp4']:[]),
+    ...EXPORT_MIME_CANDIDATES.filter(x=>x!==requestedMime)
+  ];
+
+  let lastError=null;
+  for(const candidate of recorderAttempts){
+    try{
+      if(candidate && !MediaRecorder.isTypeSupported(candidate))continue;
+      rec=new MediaRecorder(stream,candidate?{mimeType:candidate,videoBitsPerSecond:bitrate}:{videoBitsPerSecond:bitrate});
+      mime=candidate||rec.mimeType||'';
+      break;
+    }catch(err){
+      lastError=err;
+    }
+  }
+
+  if(!rec){
+    $('#exportStatus').textContent='録画エンコーダを開始できません'+(lastError?': '+lastError.message:'');
+    return;
+  }
+
+  const actualMime=rec.mimeType||mime||requestedMime;
+  const ext=actualMime.includes('mp4')?'mp4':'webm';
+
+  const chunks=[];
+  rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+
+  const old=video.currentTime,was=!video.paused;
+  video.pause();
+  await seekVideo(0);
+  current=0;
+
+  const prog=$('#exportProgress'),bar=prog.querySelector('i');
+  prog.classList.add('show');
+  $('#startExport').disabled=true;
+  $('#exportStatus').textContent=`0% 書き出し中… ${ext.toUpperCase()}`;
+
+  let done=false;
+  rec.onstop=()=>{
+    const blobType=actualMime || (ext==='mp4'?'video/mp4':'video/webm');
+    const filename=(videoFileName||'short').replace(/\.[^.]+$/,'')+'_factory.'+ext;
+    downloadBlob(new Blob(chunks,{type:blobType}),filename);
+    done=true;
+  };
+
+  rec.start(1000);
+  await video.play();
+
+  await new Promise(resolve=>{
+    function loop(){
+      current=video.currentTime;
+      drawFrame(ex,ew,eh,current,video);
+      render();
+      const p=clamp(current/duration,0,1);
+      bar.style.width=(p*100).toFixed(1)+'%';
+      $('#exportStatus').textContent=`${Math.round(p*100)}% 書き出し中… ${ext.toUpperCase()} ${fmt(current)} / ${fmt(duration)}`;
+      if(video.ended||current>=duration-.03){resolve();return}
+      requestAnimationFrame(loop)
+    }
+    loop()
+  });
+
+  video.pause();
+  rec.stop();
+  while(!done)await sleep(100);
+
+  $('#exportStatus').textContent=ext==='mp4'
+    ? '完了。MP4で保存しました。'
+    : '完了。WebMで保存しました。このブラウザではMP4録画に未対応です。';
+  $('#startExport').disabled=false;
+  bar.style.width='100%';
+
+  if(srcNode){try{srcNode.disconnect()}catch{}}
+  if(audioCtx){try{await audioCtx.close()}catch{}}
+  await seekVideo(old);
+  setTime(old);
+  if(was){video.play();playing=true;tick()}
+};
+
+if($('#continueExport')){
+  $('#continueExport').addEventListener('click',()=>setTimeout(refreshExportFormatUI,0));
+}
+refreshExportFormatUI();
 
 renderTimeline();refreshLog();render();
 
