@@ -3140,6 +3140,56 @@ $$('[data-longpress]').forEach(btn=>{
     if(selected.key==='openObject') return document.querySelector('#openCustomObjectPanel')?.click();
   };
 })();
+
+
+// ===== v22: fixed-text event assets do not ask for text =====
+(function(){
+  const previousAddDriveAsset = addDriveAsset;
+
+  function addFixedEventAsset(key,label,type,y){
+    if(!duration) return toast('先に動画を入れてね');
+    const src=DRIVE_ASSET_DATA[key];
+    if(!src) return toast('素材データがないよ');
+    const e=addEvent(type,current,{
+      text:label,
+      assetKey:key,
+      assetData:src,
+      side:'center',
+      y,
+      fixedText:true,
+      source:'drive-asset'
+    });
+    renderTimeline();renderEditor();refreshLog();render();
+    toast(`${fmt(e.start)} に ${label} 追加`);
+    return e;
+  }
+
+  addDriveAsset=function(key,label){
+    if(key==='warning') return addFixedEventAsset('warning','WARNING','warning',45);
+    if(key==='identified') return addFixedEventAsset('identified','IDENTIFIED','system',45);
+    if(key==='systemlog') return addFixedEventAsset('systemlog','SYSTEM LOG','system',72);
+    return previousAddDriveAsset(key,label);
+  };
+
+  const previousRenderEditor=renderEditor;
+  renderEditor=function(){
+    previousRenderEditor();
+    const e=getSelected();
+    if(!e) return;
+    if(e.type==='warning' || e.fixedText){
+      const textArea=document.querySelector('#editor textarea[data-k="text"]');
+      const field=textArea?.closest('.field');
+      if(field) field.remove();
+    }
+  };
+
+  document.querySelectorAll('#quickWarning, #quickWarningV18').forEach(btn=>{
+    const small=btn.querySelector('small');
+    if(small) small.textContent='標準素材';
+  });
+
+  renderEditor();
+})();
 </script>
 </body>
 </html>
