@@ -863,6 +863,12 @@ html,body{
 }
 </style>
 
+
+<style id="v24-clickability-fix">
+.quick-groups,.quick-group,.quick-group button{position:relative;z-index:2;pointer-events:auto!important}
+.preview-card{pointer-events:auto}
+@media(max-width:900px){.preview-card{z-index:70!important}.quick-groups{z-index:2!important}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -2908,6 +2914,71 @@ $$('[data-longpress]').forEach(btn=>{
   }
 })();
 
+
+// ===== v24: robust quick button bindings (inside factory scope) =====
+(function(){
+  // Keep only EVENT / HP in the first group, and bind everything here so DOM replacements cannot break taps.
+  const mainStrip=document.querySelector('.quick-group-main .v10-quick-strip');
+  if(mainStrip){
+    mainStrip.innerHTML=`
+      <button class="v10-q warning" id="quickWarningFinal"><span>⚠️</span><b>WARNING</b><small>固定素材</small></button>
+      <button class="v10-q mission" id="quickMissionFinal"><span>📘</span><b>MISSION</b><small>文字入力</small></button>
+      <button class="v10-q system" id="quickSystemFinal"><span>💬</span><b>SYSTEM</b><small>文字入力</small></button>
+      <button class="v10-q hpdown" id="quickHpDownFinal"><span>💔</span><b>HP↓</b><small>ダメージ</small></button>
+      <button class="v10-q hpup" id="quickHpUpFinal"><span>💚</span><b>HP↑</b><small>回復</small></button>`;
+  }
+
+  const ensureVideo=()=>{if(!duration){toast('先に動画を入れてね');return false}return true};
+  const bind=(sel,fn)=>{const el=document.querySelector(sel);if(el){el.onclick=null;el.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();fn(e)})}};
+
+  bind('#quickWarningFinal',()=>{
+    if(!ensureVideo())return;
+    const e=addEvent('warning',current,{text:'WARNING',assetKey:'warning',assetData:DRIVE_ASSET_DATA.warning,side:'center',y:45,source:'quick-fixed'});
+    renderTimeline();renderEditor();refreshLog();render();toast(`${fmt(e.start)} に WARNING 追加`);
+  });
+  bind('#quickMissionFinal',()=>{
+    if(!ensureVideo())return;
+    const value=window.prompt('MISSION に入れる文字を入力してね',''); if(value===null)return;
+    const e=addEvent('mission',current,{text:String(value).trim()||'MISSION',assetKey:'mission',assetData:DRIVE_ASSET_DATA.mission,side:'center',y:50,source:'quick-text'});
+    renderTimeline();renderEditor();refreshLog();render();toast(`${fmt(e.start)} に MISSION 追加`);
+  });
+  bind('#quickSystemFinal',()=>{
+    if(!ensureVideo())return;
+    const value=window.prompt('SYSTEM に入れる文字を入力してね',''); if(value===null)return;
+    const e=addEvent('system',current,{text:String(value).trim()||'SYSTEM',assetKey:'identified',assetData:DRIVE_ASSET_DATA.identified,side:'center',y:45,source:'quick-text'});
+    renderTimeline();renderEditor();refreshLog();render();toast(`${fmt(e.start)} に SYSTEM EVENT 追加`);
+  });
+  bind('#quickHpDownFinal',()=>{if(!ensureVideo())return;const now=Math.round(hpAt(current));const e=addEvent('hp',current,{from:now,to:Math.max(0,now-25),source:'quick-standard'});toast(`${fmt(e.start)} に HP -25`)});
+  bind('#quickHpUpFinal',()=>{if(!ensureVideo())return;const now=Math.round(hpAt(current));const e=addEvent('hp',current,{from:now,to:Math.min(100,now+20),source:'quick-standard-heal'});toast(`${fmt(e.start)} に HP +20`)});
+
+  // Rebind every visible effect button after all UI rewrites.
+  document.querySelectorAll('.quick-group-reaction [data-effect], .quick-group-support [data-effect]').forEach(btn=>{
+    btn.onclick=null;
+    btn.addEventListener('click',e=>{
+      e.preventDefault();e.stopPropagation();
+      if(!ensureVideo())return;
+      prototypeAddEffect(btn.dataset.effect);
+    });
+    btn.style.pointerEvents='auto';
+    btn.disabled=false;
+  });
+  bind('#quickEffectSurprise',()=>{if(ensureVideo())prototypeAddEffect('surprise')});
+  bind('#quickEffectShake',()=>{if(ensureVideo())prototypeAddEffect('shake')});
+  bind('#openSourceZoomPanel',()=>{
+    if(!ensureVideo())return;
+    $('#sourceZoomStart').value=current.toFixed(2);
+    $('#sourceZoomEnd').value=Math.min(duration,current+2).toFixed(2);
+    $('#sourceZoomAmount').value='1.15';
+    $('#sourceZoomAnchor').value='center';
+    $('#sourceZoomModal').classList.add('show');
+  });
+
+  // Also make tool buttons definitely tappable after preview/sticky layout changes.
+  ['#openCustomObjectPanel','#openSoundPanel','#openBaseShelfPanel','#prevEvent','#nextEvent','#undoQuickPanel','#redoQuickPanel','#deleteSelectedQuick'].forEach(sel=>{
+    const el=document.querySelector(sel); if(el){el.style.pointerEvents='auto';el.disabled=false;}
+  });
+})();
+
 })();
 </script>
 
@@ -3141,173 +3212,5 @@ $$('[data-longpress]').forEach(btn=>{
   };
 })();
 </script>
-
-<script id="v22-event-text-rules">
-(() => {
-  // WARNING = 完成済み固定素材なので入力なし
-  const warningBtn = document.querySelector('#quickWarning');
-  if (warningBtn) {
-    const sub = warningBtn.querySelector('small');
-    if (sub) sub.textContent = '固定素材';
-    warningBtn.onclick = () => {
-      if (!duration) return toast('先に動画を入れてね');
-      const src = DRIVE_ASSET_DATA.warning;
-      const e = addEvent('warning', current, {
-        text: 'WARNING',
-        assetKey: 'warning',
-        assetData: src,
-        side: 'center',
-        y: 45,
-        source: 'quick-fixed'
-      });
-      renderTimeline(); renderEditor(); refreshLog(); render();
-      toast(`${fmt(e.start)} に WARNING 追加`);
-    };
-  }
-
-  // MISSION = 内容を入れて使う枠なので追加時に入力
-  const missionBtn = document.querySelector('#quickMission');
-  if (missionBtn) {
-    const sub = missionBtn.querySelector('small');
-    if (sub) sub.textContent = '文字入力';
-    missionBtn.onclick = () => {
-      if (!duration) return toast('先に動画を入れてね');
-      const value = window.prompt('MISSION に入れる文字を入力してね', '');
-      if (value === null) return;
-      const text = String(value).trim() || 'MISSION';
-      const e = addEvent('mission', current, {
-        text,
-        assetKey: 'mission',
-        assetData: DRIVE_ASSET_DATA.mission,
-        side: 'center',
-        y: 50,
-        source: 'quick-text'
-      });
-      renderTimeline(); renderEditor(); refreshLog(); render();
-      toast(`${fmt(e.start)} に MISSION 追加`);
-    };
-  }
-
-  // SYSTEM EVENT = 内容を入れて使う枠。見た目は標準 IDENTIFIED 素材を利用
-  const systemBtn = document.querySelector('#quickSystemEvent');
-  if (systemBtn) {
-    const sub = systemBtn.querySelector('small');
-    if (sub) sub.textContent = '文字入力';
-    systemBtn.onclick = () => {
-      if (!duration) return toast('先に動画を入れてね');
-      const value = window.prompt('SYSTEM に入れる文字を入力してね', '');
-      if (value === null) return;
-      const text = String(value).trim() || 'SYSTEM';
-      const e = addEvent('system', current, {
-        text,
-        assetKey: 'identified',
-        assetData: DRIVE_ASSET_DATA.identified,
-        side: 'center',
-        y: 45,
-        source: 'quick-text'
-      });
-      renderTimeline(); renderEditor(); refreshLog(); render();
-      toast(`${fmt(e.start)} に SYSTEM EVENT 追加`);
-    };
-  }
-})();
-</script>
-
-
-<script id="v23-remove-duplicate-quick-buttons">
-(() => {
-  const mainStrip = document.querySelector('.quick-group-main .v10-quick-strip');
-  if (!mainStrip) return;
-
-  // 「よく使う」は EVENT / HP だけ。
-  // 揺らす・ボンッ・びっくり等は下のリアクション演出にだけ置く。
-  mainStrip.innerHTML = `
-    <button class="v10-q warning" id="quickWarningFinal"><span>⚠️</span><b>WARNING</b><small>固定素材</small></button>
-    <button class="v10-q mission" id="quickMissionFinal"><span>📘</span><b>MISSION</b><small>文字入力</small></button>
-    <button class="v10-q system" id="quickSystemFinal"><span>💬</span><b>SYSTEM</b><small>文字入力</small></button>
-    <button class="v10-q hpdown" id="quickHpDownFinal"><span>💔</span><b>HP↓</b><small>ダメージ</small></button>
-    <button class="v10-q hpup" id="quickHpUpFinal"><span>💚</span><b>HP↑</b><small>回復</small></button>
-  `;
-
-  const needVideo = () => {
-    if (!duration) {
-      toast('先に動画を入れてね');
-      return false;
-    }
-    return true;
-  };
-
-  document.querySelector('#quickWarningFinal').onclick = () => {
-    if (!needVideo()) return;
-    const e = addEvent('warning', current, {
-      text: 'WARNING',
-      assetKey: 'warning',
-      assetData: DRIVE_ASSET_DATA.warning,
-      side: 'center',
-      y: 45,
-      source: 'quick-fixed'
-    });
-    renderTimeline(); renderEditor(); refreshLog(); render();
-    toast(`${fmt(e.start)} に WARNING 追加`);
-  };
-
-  document.querySelector('#quickMissionFinal').onclick = () => {
-    if (!needVideo()) return;
-    const value = window.prompt('MISSION に入れる文字を入力してね', '');
-    if (value === null) return;
-    const message = String(value).trim() || 'MISSION';
-    const e = addEvent('mission', current, {
-      text: message,
-      assetKey: 'mission',
-      assetData: DRIVE_ASSET_DATA.mission,
-      side: 'center',
-      y: 50,
-      source: 'quick-text'
-    });
-    renderTimeline(); renderEditor(); refreshLog(); render();
-    toast(`${fmt(e.start)} に MISSION 追加`);
-  };
-
-  document.querySelector('#quickSystemFinal').onclick = () => {
-    if (!needVideo()) return;
-    const value = window.prompt('SYSTEM に入れる文字を入力してね', '');
-    if (value === null) return;
-    const message = String(value).trim() || 'SYSTEM';
-    const e = addEvent('system', current, {
-      text: message,
-      assetKey: 'identified',
-      assetData: DRIVE_ASSET_DATA.identified,
-      side: 'center',
-      y: 45,
-      source: 'quick-text'
-    });
-    renderTimeline(); renderEditor(); refreshLog(); render();
-    toast(`${fmt(e.start)} に SYSTEM EVENT 追加`);
-  };
-
-  document.querySelector('#quickHpDownFinal').onclick = () => {
-    if (!needVideo()) return;
-    const now = Math.round(hpAt(current));
-    const e = addEvent('hp', current, {
-      from: now,
-      to: Math.max(0, now - 25),
-      source: 'quick-standard'
-    });
-    toast(`${fmt(e.start)} に HP -25`);
-  };
-
-  document.querySelector('#quickHpUpFinal').onclick = () => {
-    if (!needVideo()) return;
-    const now = Math.round(hpAt(current));
-    const e = addEvent('hp', current, {
-      from: now,
-      to: Math.min(100, now + 20),
-      source: 'quick-standard-heal'
-    });
-    toast(`${fmt(e.start)} に HP +20`);
-  };
-})();
-</script>
-
 </body>
 </html>
