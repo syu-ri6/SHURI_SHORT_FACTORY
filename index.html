@@ -1301,7 +1301,7 @@ function drawHpPatch(c,w,h,hp,preset){ // cover static meter and % with dynamic 
 }
 function panelX(e,w,panelW){if(e.x!=null)return clamp(e.x/100*w-panelW/2,8,w-panelW-8);const side=e.side||autoSideAt((e.start+e.end)/2);return side==='left'?18:side==='right'?w-panelW-18:(w-panelW)/2}
 function autoSideAt(t){const s=segments.find(x=>t>=x.start&&t<x.end);return s?.overlaySide||'center'}
-function drawWarning(c,w,h,e,t){const dur=Math.max(.1,e.end-e.start),p=clamp((t-e.start)/dur,0,1),flash=.72+.28*Math.sin(p*10*Math.PI);c.save();c.globalAlpha=flash;const pw=w*.83,ph=h*.11,x=panelX(e,w,pw),y=(e.y??26)/100*h-ph/2;c.fillStyle='rgba(36,2,14,.88)';c.strokeStyle='#ff4166';c.lineWidth=3;roundRect(c,x,y,pw,ph,14,true,true);c.fillStyle='#ff5272';c.font=`900 ${w*.052}px ui-monospace,monospace`;c.textAlign='center';c.fillText('⚠ WARNING',x+pw/2,y+ph*.35);c.fillStyle='#fff';c.font=`800 ${w*.035}px -apple-system,sans-serif`;wrapText(c,e.text||'警告',x+pw/2,y+ph*.67,pw*.88,w*.043,'center');c.restore()}
+function drawWarning(c,w,h,e,t){const dur=Math.max(.1,e.end-e.start),p=clamp((t-e.start)/dur,0,1),flash=.72+.28*Math.sin(p*10*Math.PI);c.save();c.globalAlpha=flash;const pw=w*.83,ph=h*.11,x=panelX(e,w,pw),y=(e.y??45)/100*h-ph/2;c.fillStyle='rgba(36,2,14,.88)';c.strokeStyle='#ff4166';c.lineWidth=3;roundRect(c,x,y,pw,ph,14,true,true);c.fillStyle='#ff5272';c.font=`900 ${w*.052}px ui-monospace,monospace`;c.textAlign='center';c.fillText('⚠ WARNING',x+pw/2,y+ph*.35);c.fillStyle='#fff';c.font=`800 ${w*.035}px -apple-system,sans-serif`;wrapText(c,e.text||'警告',x+pw/2,y+ph*.67,pw*.88,w*.043,'center');c.restore()}
 function drawSystem(c,w,h,e,t){c.save();const pw=w*.82,ph=h*.12,x=panelX(e,w,pw),y=(e.y??73)/100*h-ph/2;const a=Math.min(1,(t-e.start)/.18,(e.end-t)/.12);c.globalAlpha=clamp(a,0,1);c.fillStyle='rgba(5,10,31,.91)';c.strokeStyle='#25e7ff';c.lineWidth=2;roundRect(c,x,y,pw,ph,12,true,true);c.fillStyle='#26e7ff';c.font=`900 ${w*.025}px ui-monospace,monospace`;c.textAlign='left';c.fillText('SYSTEM // LOG',x+pw*.06,y+ph*.27);c.fillStyle='#fff';c.font=`800 ${w*.033}px -apple-system,sans-serif`;wrapText(c,e.text||'SYSTEM',x+pw*.06,y+ph*.57,pw*.88,w*.043,'left');c.restore()}
 function drawMission(c,w,h,e,t){c.save();const pw=w*.84,ph=h*.14,x=panelX(e,w,pw),y=(e.y??51)/100*h-ph/2;const p=clamp((t-e.start)/.35,0,1),scale=.92+.08*easeOutCubic(p);c.translate(x+pw/2,y+ph/2);c.scale(scale,scale);c.translate(-pw/2,-ph/2);const g=c.createLinearGradient(0,0,pw,ph);g.addColorStop(0,'rgba(61,21,97,.95)');g.addColorStop(1,'rgba(7,14,42,.95)');c.fillStyle=g;c.strokeStyle='#a66cff';c.lineWidth=3;roundRect(c,0,0,pw,ph,15,true,true);c.fillStyle='#d7c1ff';c.font=`900 ${w*.028}px ui-monospace,monospace`;c.textAlign='center';c.fillText('MISSION',pw/2,ph*.29);c.fillStyle='#fff';c.font=`900 ${w*.038}px -apple-system,sans-serif`;wrapText(c,e.text||'ミッション発生',pw/2,ph*.58,pw*.86,w*.048,'center');c.restore()}
 function drawObject(c,w,h,e,t){const img=objectImages[e.id];if(!img||!img.complete)return;c.save();const scale=(e.scale??25)/100*w,ratio=img.naturalHeight/img.naturalWidth,iw=scale,ih=iw*ratio,x=(e.x??50)/100*w-iw/2,y=(e.y??50)/100*h-ih/2;const enter=clamp((t-e.start)/.2,0,1),exit=clamp((e.end-t)/.15,0,1);c.globalAlpha=Math.min(enter,exit,1);c.translate(x+iw/2,y+ih/2);c.rotate((e.rotate||0)*Math.PI/180);c.drawImage(img,-iw/2,-ih/2,iw,ih);c.restore()}
@@ -1961,7 +1961,7 @@ function addDriveAsset(key,label){
   if(!src)return toast('素材データがないよ');
 
   let type='object', opts={};
-  if(key==='warning'){type='warning';opts={text:'WARNING',assetKey:key,assetData:src,side:'center',y:26,source:'drive-asset'}}
+  if(key==='warning'){type='warning';opts={text:'WARNING',assetKey:key,assetData:src,side:'center',y:45,source:'drive-asset'}}
   else if(key==='mission'){type='mission';opts={text:'MISSION',assetKey:key,assetData:src,side:'center',y:50,source:'drive-asset'}}
   else if(key==='identified'){type='system';opts={text:'IDENTIFIED',assetKey:key,assetData:src,side:'center',y:45,source:'drive-asset'}}
   else if(key==='systemlog'){type='system';opts={text:'SYSTEM LOG',assetKey:key,assetData:src,side:'center',y:72,source:'drive-asset'}}
@@ -2021,7 +2021,7 @@ drawWarning=function(c,w,h,e,t){
     const img=e._assetImg;
     if(img.complete&&img.naturalWidth){
       const iw=w*.72, ih=iw*(img.naturalHeight/img.naturalWidth);
-      c.save();c.globalAlpha=Math.min(clamp((t-e.start)/.15,0,1),clamp((e.end-t)/.15,0,1));c.drawImage(img,(w-iw)/2,(e.y??26)/100*h-ih/2,iw,ih);c.restore();return;
+      c.save();c.globalAlpha=Math.min(clamp((t-e.start)/.15,0,1),clamp((e.end-t)/.15,0,1));c.drawImage(img,(w-iw)/2,(e.y??45)/100*h-ih/2,iw,ih);c.restore();return;
     }
   }
   _drawWarning(c,w,h,e,t);
