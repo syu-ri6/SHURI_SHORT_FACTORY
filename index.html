@@ -2091,40 +2091,77 @@ if($('#driveAddSelected')) $('#driveAddSelected').onclick=()=>{
 };
 
 // When a Drive event PNG exists, use it instead of the placeholder drawing.
+function isEventActiveAt(evt,time){return !!evt && time>=evt.start && time<=evt.end}
+function getResolvedOverlayY(e,time){
+  let y=Number(e.y ?? (e.type==='warning'?45:e.type==='mission'?50:72));
+  const warningActive=events.some(other=>other.id!==e.id&&other.type==='warning'&&isEventActiveAt(other,time));
+  if(warningActive){
+    if(e.type==='mission' && y<60)y=64;
+    if(e.type==='system' && y<68)y=74;
+  }
+  return y;
+}
+function drawAssetBannerWithText(c,w,h,e,t,kind){
+  if(!e.assetData)return false;
+  if(!e._assetImg){e._assetImg=new Image();e._assetImg.src=e.assetData;}
+  const img=e._assetImg;
+  if(!(img.complete&&img.naturalWidth))return false;
+
+  const alpha=Math.min(clamp((t-e.start)/.15,0,1),clamp((e.end-t)/.15,0,1));
+  const iw=(kind==='system'?w*.78:w*.72);
+  const ih=iw*(img.naturalHeight/img.naturalWidth);
+  const drawY=getResolvedOverlayY(e,t)/100*h-ih/2;
+  const drawX=(w-iw)/2;
+  const label=String(e.text||'').trim();
+
+  c.save();
+  c.globalAlpha=alpha;
+  c.drawImage(img,drawX,drawY,iw,ih);
+  c.globalAlpha=alpha;
+
+  if(kind==='warning'){
+    c.textAlign='center';
+    c.fillStyle='#fff';
+    c.shadowColor='rgba(0,0,0,.8)';
+    c.shadowBlur=Math.max(4,w*.01);
+    c.font=`900 ${w*.036}px -apple-system,sans-serif`;
+    wrapText(c,label||'WARNING',drawX+iw/2,drawY+ih*.68,iw*.74,w*.043,'center');
+  }
+
+  if(kind==='mission'){
+    c.textAlign='center';
+    c.fillStyle='#fff';
+    c.shadowColor='rgba(0,0,0,.85)';
+    c.shadowBlur=Math.max(4,w*.012);
+    c.font=`900 ${w*.04}px -apple-system,sans-serif`;
+    wrapText(c,label||'ミッション発生',drawX+iw/2,drawY+ih*.58,iw*.74,w*.047,'center');
+  }
+
+  if(kind==='system'){
+    c.textAlign='center';
+    c.fillStyle='#fff';
+    c.shadowColor='rgba(0,0,0,.85)';
+    c.shadowBlur=Math.max(4,w*.012);
+    c.font=`900 ${w*.035}px -apple-system,sans-serif`;
+    wrapText(c,label||'SYSTEM',drawX+iw/2,drawY+ih*.58,iw*.80,w*.043,'center');
+  }
+
+  c.restore();
+  return true;
+}
 const _drawWarning=drawWarning;
 drawWarning=function(c,w,h,e,t){
-  if(e.assetData){
-    if(!e._assetImg){e._assetImg=new Image();e._assetImg.src=e.assetData;}
-    const img=e._assetImg;
-    if(img.complete&&img.naturalWidth){
-      const iw=w*.72, ih=iw*(img.naturalHeight/img.naturalWidth);
-      c.save();c.globalAlpha=Math.min(clamp((t-e.start)/.15,0,1),clamp((e.end-t)/.15,0,1));c.drawImage(img,(w-iw)/2,(e.y??45)/100*h-ih/2,iw,ih);c.restore();return;
-    }
-  }
+  if(drawAssetBannerWithText(c,w,h,e,t,'warning'))return;
   _drawWarning(c,w,h,e,t);
 };
 const _drawMission=drawMission;
 drawMission=function(c,w,h,e,t){
-  if(e.assetData){
-    if(!e._assetImg){e._assetImg=new Image();e._assetImg.src=e.assetData;}
-    const img=e._assetImg;
-    if(img.complete&&img.naturalWidth){
-      const iw=w*.72, ih=iw*(img.naturalHeight/img.naturalWidth);
-      c.save();c.globalAlpha=Math.min(clamp((t-e.start)/.15,0,1),clamp((e.end-t)/.15,0,1));c.drawImage(img,(w-iw)/2,(e.y??50)/100*h-ih/2,iw,ih);c.restore();return;
-    }
-  }
+  if(drawAssetBannerWithText(c,w,h,e,t,'mission'))return;
   _drawMission(c,w,h,e,t);
 };
 const _drawSystem=drawSystem;
 drawSystem=function(c,w,h,e,t){
-  if(e.assetData){
-    if(!e._assetImg){e._assetImg=new Image();e._assetImg.src=e.assetData;}
-    const img=e._assetImg;
-    if(img.complete&&img.naturalWidth){
-      const iw=w*.78, ih=iw*(img.naturalHeight/img.naturalWidth);
-      c.save();c.globalAlpha=Math.min(clamp((t-e.start)/.15,0,1),clamp((e.end-t)/.15,0,1));c.drawImage(img,(w-iw)/2,(e.y??72)/100*h-ih/2,iw,ih);c.restore();return;
-    }
-  }
+  if(drawAssetBannerWithText(c,w,h,e,t,'system'))return;
   _drawSystem(c,w,h,e,t);
 };
 
