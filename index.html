@@ -1370,7 +1370,7 @@ systemLogEnlargedImg.src = SYSTEM_LOG_ENLARGED_DATA;
 function drawPermanentSystemLogBase(c,w,h,sourceVideo,z){
   // The old SYSTEM LOG is baked into BASE. First restore the underlying video only
   // in that strip, then place one enlarged clean SYSTEM LOG on top.
-  const clearX=w*.025, clearY=h*.695, clearW=w*.95, clearH=h*.168;
+  const clearX=w*.025, clearY=h*.690, clearW=w*.95, clearH=h*.215;
   c.save();
   c.beginPath(); c.rect(clearX,clearY,clearW,clearH); c.clip();
   if(sourceVideo && sourceVideo.readyState>=2){
