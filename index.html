@@ -1370,7 +1370,7 @@ systemLogEnlargedImg.src = SYSTEM_LOG_ENLARGED_DATA;
 function drawPermanentSystemLogBase(c,w,h,sourceVideo,z){
   // The old SYSTEM LOG is baked into BASE. First restore the underlying video only
   // in that strip, then place one enlarged clean SYSTEM LOG on top.
-  const clearX=w*.02, clearY=h*.675, clearW=w*.96, clearH=h*.195;
+  const clearX=w*.02, clearY=h*.724, clearW=w*.96, clearH=h*.122;
   c.save();
   c.beginPath(); c.rect(clearX,clearY,clearW,clearH); c.clip();
   if(sourceVideo && sourceVideo.readyState>=2){
@@ -1383,9 +1383,9 @@ function drawPermanentSystemLogBase(c,w,h,sourceVideo,z){
   if(!(systemLogEnlargedImg.complete && systemLogEnlargedImg.naturalWidth)) return;
   const iw = w * .96;
   // SYSTEM LOG is intentionally taller than the original BASE version so text is readable on Shorts.
-  const ih = h * .175;
+  const ih = h * .168;
   const x = (w - iw) / 2;
-  const y = h * .684;
+  const y = h * .695;
   c.save();
   c.drawImage(systemLogEnlargedImg, x, y, iw, ih);
   c.restore();
@@ -3255,7 +3255,7 @@ $$('[data-longpress]').forEach(btn=>{
       const fs=w*(manualLines.length>1?.034:.041);
       c.font=`900 ${fs}px -apple-system,BlinkMacSystemFont,sans-serif`;
       const x=w*.145, maxW=w*.72;
-      const centerY=h*.790;
+      const centerY=h*.795;
       if(manualLines.length>1){
         const lh=fs*1.28;
         manualLines.slice(0,2).forEach((line,i)=>{
