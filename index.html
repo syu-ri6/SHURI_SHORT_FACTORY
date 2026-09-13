@@ -1362,6 +1362,7 @@ function hpAt(t){let hp=85;for(const e of events.filter(x=>x.type==='hp').sort((
 function easeOutCubic(x){return 1-Math.pow(1-x,3)}
 function drawFrame(context,w,h,t,sourceVideo=video){context.clearRect(0,0,w,h);context.fillStyle='#000';context.fillRect(0,0,w,h);const z=zoomAt(t);if(sourceVideo.readyState>=2)drawCover(context,sourceVideo,w,h,z?.amount||1,z?.anchor||'center');
   const preset=baseAt(t),bi=assetImgs[preset]||assetImgs.normal;if(bi.complete)context.drawImage(bi,0,0,w,h);
+  drawPermanentSystemLogBase(context,w,h);
   drawHpPatch(context,w,h,hpAt(t),preset);
   for(const e of activeEvents(t)){if(e.type==='warning')drawWarning(context,w,h,e,t);if(e.type==='system')drawSystem(context,w,h,e,t);if(e.type==='mission')drawMission(context,w,h,e,t);if(e.type==='object')drawObject(context,w,h,e,t)}
 }
@@ -3200,6 +3201,167 @@ $$('[data-longpress]').forEach(btn=>{
       renderTimeline();renderEditor();refreshLog();render();toast(`${fmt(e.start)} に SYSTEM LOG文字 追加`);
     };
   }
+})();
+
+
+// ===== v29-systemlog-semantic-bundles =====
+(function(){
+  // Permanent SYSTEM LOG is part of the BASE, not a temporary event panel.
+  // Enlarge the actual base-level log by redrawing the clean LOG material over the small raster version.
+  let v29SystemBaseImg=null;
+  window.drawPermanentSystemLogBase = function(c,w,h){
+    try{
+      const src=DRIVE_ASSET_DATA?.systemlog;
+      if(!src)return;
+      if(!v29SystemBaseImg){v29SystemBaseImg=new Image();v29SystemBaseImg.src=src;}
+      if(!(v29SystemBaseImg.complete&&v29SystemBaseImg.naturalWidth))return;
+      const iw=w*.94;
+      const naturalRatio=v29SystemBaseImg.naturalHeight/v29SystemBaseImg.naturalWidth;
+      // Keep it broad, but deliberately give the reading area more height than the old BASE.
+      const ih=Math.min(h*.145, iw*naturalRatio*1.10);
+      const x=(w-iw)/2;
+      const y=h*.702;
+      c.save();
+      // Mask the original smaller SYSTEM LOG while leaving command buttons below untouched.
+      const g=c.createLinearGradient(0,y,0,y+ih);
+      g.addColorStop(0,'rgba(1,4,16,.70)');
+      g.addColorStop(1,'rgba(1,4,16,.92)');
+      c.fillStyle=g;
+      c.fillRect(w*.035,y-h*.006,w*.93,ih+h*.012);
+      c.drawImage(v29SystemBaseImg,x,y,iw,ih);
+      c.restore();
+    }catch(err){ console.warn('SYSTEM LOG base draw',err); }
+  };
+
+  // Final SYSTEM text renderer: place text inside the enlarged permanent LOG body.
+  const __v29DrawSystem=drawSystem;
+  drawSystem=function(c,w,h,e,t){
+    if(e.source==='system-log-text'){
+      const a=Math.min(clamp((t-e.start)/.10,0,1),clamp((e.end-t)/.10,0,1));
+      const raw=String(e.text||'SYSTEM').trim();
+      const manualLines=raw.split(/\n+/).filter(Boolean);
+      c.save();
+      c.globalAlpha=a;
+      c.textAlign='left';
+      c.textBaseline='middle';
+      c.fillStyle='#fff';
+      c.shadowColor='rgba(50,225,255,.72)';
+      c.shadowBlur=Math.max(3,w*.009);
+      const fs=w*(manualLines.length>1?.030:.035);
+      c.font=`900 ${fs}px -apple-system,BlinkMacSystemFont,sans-serif`;
+      const x=w*.155, maxW=w*.70;
+      const centerY=h*.793;
+      if(manualLines.length>1){
+        const lh=fs*1.28;
+        manualLines.slice(0,2).forEach((line,i)=>{
+          let s=line;
+          while(s.length>1&&c.measureText(s).width>maxW)s=s.slice(0,-1);
+          c.fillText(s,x,centerY+(i-.5)*lh);
+        });
+      }else{
+        wrapText(c,raw,x,centerY,maxW,fs*1.22,'left');
+      }
+      c.restore();
+      return;
+    }
+    __v29DrawSystem(c,w,h,e,t);
+  };
+
+  function v29AddSound(name,dur=.55,volume=.9,source='semantic-bundle'){
+    return addEvent('sound',current,{end:Math.min(duration,current+dur),soundKind:'se',name,volume,source});
+  }
+  function v29Refresh(){sortEvents();renderTimeline();renderEditor();refreshLog();render();}
+  function v29BundleWarning(){
+    if(!duration)return toast('先に動画を入れてね');
+    const visual=addEvent('warning',current,{text:'WARNING',assetKey:'warning',assetData:DRIVE_ASSET_DATA.warning,side:'center',y:45,source:'semantic-warning'});
+    v29AddSound('SE 警告',.65,.95,'semantic-warning');
+    selectedId=visual.id;v29Refresh();toast(`${fmt(visual.start)} に WARNING ＋ 警告SE`);
+  }
+  function v29BundleMission(label=''){
+    if(!duration)return toast('先に動画を入れてね');
+    const value=label || window.prompt('MISSION に入れる文字を入力してね','');
+    if(value===null)return;
+    const visual=addEvent('mission',current,{text:String(value).trim()||'MISSION',assetKey:'mission',assetData:DRIVE_ASSET_DATA.mission,side:'center',y:50,source:'semantic-mission'});
+    v29AddSound('SE SYSTEM ピコン',.45,.9,'semantic-mission');
+    selectedId=visual.id;v29Refresh();toast(`${fmt(visual.start)} に MISSION ＋ ピコン`);
+  }
+  function v29BundleSystem(label=''){
+    if(!duration)return toast('先に動画を入れてね');
+    const value=label || window.prompt('SYSTEM LOG に入れる文字を入力してね','');
+    if(value===null)return;
+    const visual=addEvent('system',current,{text:String(value).trim()||'SYSTEM',source:'system-log-text'});
+    v29AddSound('SE SYSTEM ピコン',.42,.82,'semantic-system');
+    selectedId=visual.id;v29Refresh();toast(`${fmt(visual.start)} に SYSTEM LOG ＋ ピコン`);
+  }
+  function v29BundleIdentified(label='カブトムシ ♀'){
+    if(!duration)return toast('先に動画を入れてね');
+    const visual=addEvent('system',current,{end:Math.min(duration,current+2.0),text:label,assetKey:'identified',assetData:DRIVE_ASSET_DATA.identified,side:'center',y:45,source:'semantic-identified'});
+    v29AddSound('SE 判定 / CLEAR',.6,.92,'semantic-identified');
+    selectedId=visual.id;v29Refresh();toast(`${fmt(visual.start)} に IDENTIFIED ＋ 判定SE`);
+  }
+  function v29BundleClear(){
+    if(!duration)return toast('先に動画を入れてね');
+    const visual=addEvent('mission',current,{end:Math.min(duration,current+2.5),text:'MISSION CLEAR',assetKey:'mission',assetData:DRIVE_ASSET_DATA.mission,side:'center',y:50,source:'semantic-clear'});
+    v29AddSound('SE 判定 / CLEAR',.6,.92,'semantic-clear');
+    selectedId=visual.id;v29Refresh();toast(`${fmt(visual.start)} に MISSION CLEAR ＋ CLEAR音`);
+  }
+  function v29BundleStatus(){
+    if(!duration)return toast('先に動画を入れてね');
+    const visual=addEvent('system',current,{end:Math.min(duration,current+2.7),text:'NEW STATUS\n関係性：----',source:'system-log-text'});
+    v29AddSound('SE 決定音',.5,.88,'semantic-status');
+    selectedId=visual.id;v29Refresh();toast(`${fmt(visual.start)} に NEW STATUS ＋ 決定音`);
+  }
+
+  function replaceBind(id,handler,smallText){
+    const old=document.getElementById(id); if(!old)return null;
+    const clone=old.cloneNode(true); old.replaceWith(clone);
+    if(smallText){const sm=clone.querySelector('small');if(sm)sm.textContent=smallText;}
+    clone.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();handler();});
+    return clone;
+  }
+  replaceBind('quickWarningFinal',v29BundleWarning,'警告＋SE');
+  replaceBind('quickMissionFinal',()=>v29BundleMission(),'表示＋ピコン');
+  replaceBind('quickSystemFinal',()=>v29BundleSystem(),'LOG＋ピコン');
+
+  // SYSTEM LOG is permanent in BASE, so it should not appear as a separate Drive material.
+  document.querySelectorAll('[data-drive-v18-key="systemlog"],[data-drive-only-key="systemlog"],[data-drive-key="systemlog"]').forEach(x=>x.remove());
+
+  // Research controls now represent complete expressions (visual + matching SE), not separate sound chores.
+  document.addEventListener('click',function(e){
+    const btn=e.target.closest?.('[data-research-add]');
+    if(!btn)return;
+    const kind=btn.dataset.researchAdd;
+    if(!['warning','missionUpdate','identified','missionClear','status'].includes(kind))return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    if(kind==='warning')return v29BundleWarning();
+    if(kind==='missionUpdate')return v29BundleMission('MISSION UPDATED');
+    if(kind==='identified')return v29BundleIdentified();
+    if(kind==='missionClear')return v29BundleClear();
+    if(kind==='status')return v29BundleStatus();
+  },true);
+
+  // When the late research panel is inserted, remove duplicate standalone SE buttons.
+  const cleanResearchSounds=()=>{
+    document.querySelectorAll('[data-research-sound]').forEach(x=>x.remove());
+    const root=document.getElementById('researchAdoptGroup');
+    if(root){
+      root.querySelectorAll('.research-mini-title').forEach(t=>{
+        if((t.textContent||'').includes('音の役割')){
+          const section=t.parentElement;
+          const grid=section?.querySelector('.research-adopt-grid');
+          if(grid && !grid.children.length) section.remove();
+        }
+      });
+      const w=root.querySelector('[data-research-add="warning"]'); if(w){w.querySelector('small').textContent='警告＋SE';}
+      const mu=root.querySelector('[data-research-add="missionUpdate"]'); if(mu){mu.querySelector('small').textContent='表示＋ピコン';}
+      const idn=root.querySelector('[data-research-add="identified"]'); if(idn){idn.querySelector('small').textContent='判明＋判定SE';}
+      const clr=root.querySelector('[data-research-add="missionClear"]'); if(clr){clr.querySelector('small').textContent='閉じる＋CLEAR音';}
+      const sts=root.querySelector('[data-research-add="status"]'); if(sts){sts.querySelector('small').textContent='オチ＋決定音';}
+    }
+  };
+  cleanResearchSounds();
+  const mo=new MutationObserver(cleanResearchSounds);
+  mo.observe(document.body,{childList:true,subtree:true});
 })();
 
 })();
