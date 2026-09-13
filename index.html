@@ -869,6 +869,11 @@ html,body{
 .preview-card{pointer-events:auto}
 @media(max-width:900px){.preview-card{z-index:70!important}.quick-groups{z-index:2!important}}
 </style>
+
+<style id="v28-purpose-first-effects">
+.prototype-material small{display:block;margin-top:3px;font-size:8px;color:#aeb9ef;font-weight:600}
+.quick-group-reaction .v10-q b,.quick-group-support .v10-q b{letter-spacing:.01em}
+</style>
 </head>
 <body>
 <div class="app">
@@ -965,24 +970,24 @@ html,body{
       </section>
 
       <section class="quick-group quick-group-reaction">
-        <div class="quick-group-head"><b>リアクション演出</b><span>押した瞬間に効かせる</span></div>
+        <div class="quick-group-head"><b>表現したいこと</b><span>大きい文字＝目的 / 小さい文字＝実際の演出</span></div>
         <div class="v10-quick-strip">
-          <button class="v10-q surprise" id="quickEffectSurprise"><span>❗️</span><b>びっくり</b><small>赤・右上</small></button>
-          <button class="v10-q effect" data-effect="pop"><span>💥</span><b>ボンッ</b><small>中央フェード</small></button>
-          <button class="v10-q effect" id="quickEffectShake"><span>〰️</span><b>揺らす</b><small>効果</small></button>
-          <button class="v10-q effect" data-effect="punchzoom"><span>🔍</span><b>パンチ</b><small>瞬間ズーム</small></button>
-          <button class="v10-q effect" data-effect="freeze"><span>⏸️</span><b>一時停止</b><small>0.5秒</small></button>
+          <button class="v10-q surprise" id="quickEffectSurprise"><span>❗️</span><b>注目</b><small>！を右上</small></button>
+          <button class="v10-q effect" data-effect="pop"><span>💥</span><b>衝撃</b><small>ボンッ＋フェード</small></button>
+          <button class="v10-q effect" id="quickEffectShake"><span>〰️</span><b>驚き</b><small>画面揺れ</small></button>
+          <button class="v10-q effect" data-effect="punchzoom"><span>🔍</span><b>感情ピーク</b><small>瞬間ズーム</small></button>
+          <button class="v10-q effect" data-effect="freeze"><span>⏸️</span><b>間を作る</b><small>一時停止</small></button>
         </div>
       </section>
 
       <section class="quick-group quick-group-support">
-        <div class="quick-group-head"><b>補助演出</b><span>必要な時だけ</span></div>
+        <div class="quick-group-head"><b>補助する目的</b><span>意味がある時だけ使う</span></div>
         <div class="v10-quick-strip">
-          <button class="v10-q effect" data-effect="flash"><span>✨</span><b>点滅</b><small>効果</small></button>
-          <button class="v10-q effect" data-effect="whiteflash"><span>⚡️</span><b>白フラ</b><small>一発</small></button>
-          <button class="v10-q effect" data-effect="blackout"><span>⬛️</span><b>暗転</b><small>0.15秒</small></button>
-          <button class="v10-q effect" data-effect="rewind"><span>⏪</span><b>巻き戻し</b><small>0.4秒</small></button>
-          <button class="v10-q effect" id="openSourceZoomPanel"><span>🔎</span><b>元動画ズーム</b><small>範囲指定</small></button>
+          <button class="v10-q effect" data-effect="flash"><span>✨</span><b>注意を戻す</b><small>点滅</small></button>
+          <button class="v10-q effect" data-effect="whiteflash"><span>⚡️</span><b>強い衝撃</b><small>白フラッシュ</small></button>
+          <button class="v10-q effect" data-effect="blackout"><span>⬛️</span><b>場面転換</b><small>短い暗転</small></button>
+          <button class="v10-q effect" data-effect="rewind"><span>⏪</span><b>反復オチ</b><small>巻き戻し</small></button>
+          <button class="v10-q effect" id="openSourceZoomPanel"><span>🔎</span><b>視線誘導</b><small>元動画ズーム</small></button>
         </div>
       </section>
 
@@ -1169,15 +1174,15 @@ html,body{
 
 <div class="modal" id="effectShelfModal">
   <div class="modal-card prototype-shelf-card">
-    <div class="modal-head"><h3>EFFECT</h3><button class="btn mini" data-close>閉じる</button></div>
+    <div class="modal-head"><h3>表現したいこと</h3><button class="btn mini" data-close>閉じる</button></div>
     <div class="modal-body">
-      <div class="hint">再生位置にエフェクトを追加。びっくりは右上固定。</div>
+      <div class="hint">先に「何を表現したいか」を選択。実際に使う演出は小さく表記しています。</div>
       <div class="prototype-material-grid">
-        <button class="prototype-material" data-effect="shake"><span>〰️</span><b>揺らす</b></button>
-        <button class="prototype-material" data-effect="pop"><span>💥</span><b>ポンッ</b></button>
-        <button class="prototype-material" data-effect="zoom"><span>🔎</span><b>ズーム</b></button>
-        <button class="prototype-material" data-effect="flash"><span>✨</span><b>フラッシュ</b></button>
-        <button class="prototype-material" data-effect="surprise"><span>❗️</span><b>びっくり右上</b></button>
+        <button class="prototype-material" data-effect="shake"><span>〰️</span><b>驚き</b><small>画面揺れ</small></button>
+        <button class="prototype-material" data-effect="pop"><span>💥</span><b>衝撃</b><small>ボンッ</small></button>
+        <button class="prototype-material" data-effect="zoom"><span>🔎</span><b>視線誘導</b><small>ズーム</small></button>
+        <button class="prototype-material" data-effect="flash"><span>✨</span><b>注意を戻す</b><small>点滅</small></button>
+        <button class="prototype-material" data-effect="surprise"><span>❗️</span><b>注目</b><small>！を右上</small></button>
       </div>
     </div>
   </div>
@@ -1498,10 +1503,10 @@ function getSelected(){return events.find(e=>e.id===selectedId)}
 function renderEditor(){const e=getSelected(),box=$('#editor');$('#deleteEvent').disabled=!e;const ec=$('#eventEditorCard');if(ec)ec.classList.toggle('prototype-show',!!e);if(!e){box.innerHTML='<div class="hint">タイムラインのイベントを押すと、ここで開始秒・終了秒・文章・位置・大きさなどを直せます。</div>';return}let html=`<div class="row"><div class="field grow"><label>開始 秒</label><input data-k="start" type="number" min="0" step="0.05" value="${e.start.toFixed(2)}"></div><div class="field grow"><label>終了 秒</label><input data-k="end" type="number" min="0" step="0.05" value="${e.end.toFixed(2)}"></div></div><div class="prototype-mini-adjust"><button class="btn mini ghost" data-nudge="moveEarly">← 移動 0.1s</button><button class="btn mini ghost" data-nudge="moveLate">移動 0.1s →</button><button class="btn mini ghost" data-nudge="startEarlier">頭 -0.1s</button><button class="btn mini ghost" data-nudge="startLater">頭 +0.1s</button><button class="btn mini ghost" data-nudge="endEarlier">尻 -0.1s</button><button class="btn mini ghost" data-nudge="endLater">尻 +0.1s</button></div>`;
  if(e.type==='base')html+=`<div class="field"><label>BASE</label><select data-k="preset">${Object.entries(ASSETS).map(([k,v])=>`<option value="${k}" ${e.preset===k?'selected':''}>${v.label}</option>`).join('')}</select></div>`;
  if(e.type==='hp')html+=`<div class="row"><div class="field grow"><label>開始HP</label><input data-k="from" type="number" min="0" max="100" value="${e.from}"></div><div class="field grow"><label>終了HP</label><input data-k="to" type="number" min="0" max="100" value="${e.to}"></div></div>`;
- if(['warning','system','mission'].includes(e.type))html+=`<div class="field"><label>${e.type==='system'?'SYSTEM EVENT':typeNames[e.type]} の文字</label><textarea data-k="text">${escapeHtml(e.text)}</textarea></div><div class="row"><div class="field grow"><label>自動配置 / 左右</label><select data-k="side"><option value="left" ${e.side==='left'?'selected':''}>左</option><option value="center" ${e.side==='center'?'selected':''}>中央</option><option value="right" ${e.side==='right'?'selected':''}>右</option></select></div><div class="field grow"><label>縦位置 %</label><input data-k="y" type="number" min="5" max="95" step="1" value="${e.y??(e.type==='warning'?26:e.type==='system'?73:51)}"></div></div>`;
+ if(['warning','system','mission'].includes(e.type))html+=`<div class="field"><label>${e.type==='system'?'SYSTEM LOG':typeNames[e.type]} の文字</label><textarea data-k="text">${escapeHtml(e.text)}</textarea></div><div class="row"><div class="field grow"><label>自動配置 / 左右</label><select data-k="side"><option value="left" ${e.side==='left'?'selected':''}>左</option><option value="center" ${e.side==='center'?'selected':''}>中央</option><option value="right" ${e.side==='right'?'selected':''}>右</option></select></div><div class="field grow"><label>縦位置 %</label><input data-k="y" type="number" min="5" max="95" step="1" value="${e.y??(e.type==='warning'?26:e.type==='system'?73:51)}"></div></div>`;
  if(e.type==='sound')html+=`<div class="row"><div class="field grow"><label>種類</label><select data-k="soundKind"><option value="bgm" ${e.soundKind==='bgm'?'selected':''}>BGM</option><option value="se" ${e.soundKind==='se'?'selected':''}>SE</option></select></div><div class="field grow"><label>音の名前</label><input data-k="name" value="${escapeHtml(e.name||'BGM')}"></div></div><div class="row"><div class="field grow"><label>音量</label><input data-k="volume" type="number" min="0" max="1" step="0.05" value="${Number(e.volume??0.9).toFixed(2)}"></div><div class="field grow"><label>音ファイル</label><input id="soundFile" type="file" accept="audio/*"></div></div><div class="row"><button class="btn mini ghost grow" id="soundPreviewBtn">試聴</button></div>`;
  if(e.type==='zoom')html+=`<div class="row"><div class="field grow"><label>ズーム倍率</label><input data-k="amount" type="number" min="1" max="3" step="0.05" value="${Number(e.amount||1).toFixed(2)}"></div><div class="field grow"><label>寄せる位置</label><select data-k="anchor"><option value="center" ${e.anchor==='center'?'selected':''}>中央</option><option value="top" ${e.anchor==='top'?'selected':''}>上</option><option value="bottom" ${e.anchor==='bottom'?'selected':''}>下</option><option value="left" ${e.anchor==='left'?'selected':''}>左</option><option value="right" ${e.anchor==='right'?'selected':''}>右</option></select></div></div>`;
- if(e.type==='object')html+=`<div class="prototype-object-editor"><div class="field"><label>画像</label><input id="objectFile" type="file" accept="image/*"></div><div class="field"><label>名前</label><input data-k="name" value="${escapeHtml(e.name||'個別素材')}"></div><div class="field"><label>動かすバー <small>X位置</small></label><div class="range-pair"><input data-k="x" type="range" min="0" max="100" step="1" value="${e.x??50}"><input data-k="x" type="number" min="0" max="100" value="${e.x??50}"></div></div><div class="field"><label>動かすバー <small>Y位置</small></label><div class="range-pair"><input data-k="y" type="range" min="0" max="100" step="1" value="${e.y??50}"><input data-k="y" type="number" min="0" max="100" value="${e.y??50}"></div></div><div class="field"><label>動かすバー <small>大きさ</small></label><div class="range-pair"><input data-k="scale" type="range" min="3" max="100" step="1" value="${e.scale??25}"><input data-k="scale" type="number" min="3" max="100" value="${e.scale??25}"></div></div><div class="row"><div class="field grow"><label>回転 °</label><input data-k="rotate" type="number" min="-180" max="180" value="${e.rotate??0}"></div><div class="field grow"><label>エフェクト</label><select data-k="effectKind"><option value="" ${!e.effectKind?'selected':''}>なし</option><option value="shake" ${e.effectKind==='shake'?'selected':''}>揺らす</option><option value="pop" ${e.effectKind==='pop'?'selected':''}>ポンッ</option><option value="surprise" ${e.effectKind==='surprise'?'selected':''}>びっくり右上</option><option value="flash" ${e.effectKind==='flash'?'selected':''}>点滅</option><option value="zoom" ${e.effectKind==='zoom'?'selected':''}>ズーム</option></select></div></div></div>`;
+ if(e.type==='object')html+=`<div class="prototype-object-editor"><div class="field"><label>画像</label><input id="objectFile" type="file" accept="image/*"></div><div class="field"><label>名前</label><input data-k="name" value="${escapeHtml(e.name||'個別素材')}"></div><div class="field"><label>動かすバー <small>X位置</small></label><div class="range-pair"><input data-k="x" type="range" min="0" max="100" step="1" value="${e.x??50}"><input data-k="x" type="number" min="0" max="100" value="${e.x??50}"></div></div><div class="field"><label>動かすバー <small>Y位置</small></label><div class="range-pair"><input data-k="y" type="range" min="0" max="100" step="1" value="${e.y??50}"><input data-k="y" type="number" min="0" max="100" value="${e.y??50}"></div></div><div class="field"><label>動かすバー <small>大きさ</small></label><div class="range-pair"><input data-k="scale" type="range" min="3" max="100" step="1" value="${e.scale??25}"><input data-k="scale" type="number" min="3" max="100" value="${e.scale??25}"></div></div><div class="row"><div class="field grow"><label>回転 °</label><input data-k="rotate" type="number" min="-180" max="180" value="${e.rotate??0}"></div><div class="field grow"><label>エフェクト</label><select data-k="effectKind"><option value="" ${!e.effectKind?'selected':''}>なし</option><option value="shake" ${e.effectKind==='shake'?'selected':''}>驚き（画面揺れ）</option><option value="pop" ${e.effectKind==='pop'?'selected':''}>衝撃（ボンッ）</option><option value="surprise" ${e.effectKind==='surprise'?'selected':''}>注目（！を右上）</option><option value="flash" ${e.effectKind==='flash'?'selected':''}>注意を戻す（点滅）</option><option value="zoom" ${e.effectKind==='zoom'?'selected':''}>視線誘導（ズーム）</option></select></div></div></div>`;
  html+=`<div class="hint">source: ${e.source||'manual'} / ID: ${e.id}</div>`;box.innerHTML=html;box.querySelectorAll('[data-k]').forEach(inp=>{inp.oninput=()=>{let v=inp.value;if(inp.type==='number'||inp.type==='range')v=Number(v);e[inp.dataset.k]=v;if(inp.dataset.k==='start')e.start=clamp(v,0,duration);if(inp.dataset.k==='end')e.end=clamp(v,e.start+.05,duration);box.querySelectorAll('[data-k=\"'+inp.dataset.k+'\"]').forEach(other=>{if(other!==inp)other.value=inp.value});sortEvents();renderTimeline();refreshLog();render()}});box.querySelectorAll('[data-nudge]').forEach(btn=>btn.onclick=()=>prototypeNudgeSelected(btn.dataset.nudge));const sf=$('#soundFile');if(sf)sf.onchange=ev=>{const f=ev.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{e.soundData={name:f.name,dataUrl:reader.result};e.name=e.name||f.name.replace(/\.[^.]+$/,'');renderEditor();refreshLog()};reader.readAsDataURL(f)};const sp=$('#soundPreviewBtn');if(sp)sp.onclick=()=>previewSoundEvent(e);const of=$('#objectFile');if(of)of.onchange=ev=>{const f=ev.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{const img=new Image();img.onload=()=>render();img.src=reader.result;objectImages[e.id]=img;e.objectData={name:f.name,dataUrl:reader.result};e.name=f.name.replace(/\.[^.]+$/,'');renderEditor();renderTimeline();refreshLog();render()};reader.readAsDataURL(f)}}
 $('#deleteEvent').onclick=()=>{if(!selectedId)return;events=events.filter(e=>e.id!==selectedId);delete objectImages[selectedId];selectedId=null;renderTimeline();renderEditor();refreshLog();render()};
 
@@ -1960,7 +1965,7 @@ function prototypeRenderEffects(){
 function prototypeAddEffect(kind){
   if(!duration)return toast('先に動画を入れてね');
   const durations={shake:.8,pop:.65,zoom:1.1,flash:.55,surprise:1.1,blackout:.15,whiteflash:.12,punchzoom:.25,freeze:.5,rewind:.4};
-  const names={shake:'揺らす',pop:'ボンッ',zoom:'ズーム',flash:'点滅',surprise:'びっくり',blackout:'暗転',whiteflash:'白フラッシュ',punchzoom:'パンチズーム',freeze:'一時停止',rewind:'巻き戻し'};
+  const names={shake:'驚き（画面揺れ）',pop:'衝撃（ボンッ）',zoom:'視線誘導（ズーム）',flash:'注意を戻す（点滅）',surprise:'注目（！マーク）',blackout:'場面転換（暗転）',whiteflash:'強い衝撃（白フラッシュ）',punchzoom:'感情ピーク（瞬間ズーム）',freeze:'間を作る（一時停止）',rewind:'反復オチ（巻き戻し）'};
   const e=addEvent('object',current,{
     end:Math.min(duration,current+(durations[kind]||1)),
     name:names[kind]||'EFFECT',
@@ -2134,7 +2139,7 @@ function drawAssetBannerWithText(c,w,h,e,t,kind){
     c.shadowColor='rgba(0,0,0,.85)';
     c.shadowBlur=Math.max(4,w*.012);
     c.font=`900 ${w*.04}px -apple-system,sans-serif`;
-    wrapText(c,label||'ミッション発生',drawX+iw/2,drawY+ih*.58,iw*.74,w*.047,'center');
+    c.lineWidth=Math.max(3,w*.009); c.strokeStyle='rgba(0,0,0,.9)'; c.font=`900 ${w*.037}px -apple-system,sans-serif`; c.strokeText(label||'ミッション発生',drawX+iw/2,drawY+ih*.72); c.fillText(label||'ミッション発生',drawX+iw/2,drawY+ih*.72);
   }
 
   if(kind==='system'){
@@ -2161,6 +2166,22 @@ drawMission=function(c,w,h,e,t){
 };
 const _drawSystem=drawSystem;
 drawSystem=function(c,w,h,e,t){
+  // Quick SYSTEM writes into the permanent SYSTEM LOG at the bottom.
+  // Do not spawn a second IDENTIFIED/SYSTEM panel on top of the character.
+  if(e.source==='system-log-text'){
+    const a=Math.min(clamp((t-e.start)/.12,0,1),clamp((e.end-t)/.12,0,1));
+    c.save();
+    c.globalAlpha=a;
+    c.textAlign='left';
+    c.textBaseline='middle';
+    c.fillStyle='#fff';
+    c.shadowColor='rgba(255,45,215,.8)';
+    c.shadowBlur=Math.max(3,w*.009);
+    c.font=`900 ${w*.028}px -apple-system,sans-serif`;
+    wrapText(c,String(e.text||'SYSTEM'),w*.17,h*.858,w*.66,w*.036,'left');
+    c.restore();
+    return;
+  }
   if(drawAssetBannerWithText(c,w,h,e,t,'system'))return;
   _drawSystem(c,w,h,e,t);
 };
@@ -2982,7 +3003,7 @@ $$('[data-longpress]').forEach(btn=>{
   bind('#quickSystemFinal',()=>{
     if(!ensureVideo())return;
     const value=window.prompt('SYSTEM に入れる文字を入力してね',''); if(value===null)return;
-    const e=addEvent('system',current,{text:String(value).trim()||'SYSTEM',assetKey:'identified',assetData:DRIVE_ASSET_DATA.identified,side:'center',y:45,source:'quick-text'});
+    const e=addEvent('system',current,{text:String(value).trim()||'SYSTEM',side:'center',y:74,source:'system-log-text'});
     renderTimeline();renderEditor();refreshLog();render();toast(`${fmt(e.start)} に SYSTEM EVENT 追加`);
   });
   bind('#quickHpDownFinal',()=>{if(!ensureVideo())return;const now=Math.round(hpAt(current));const e=addEvent('hp',current,{from:now,to:Math.max(0,now-25),source:'quick-standard'});toast(`${fmt(e.start)} に HP -25`)});
@@ -3014,6 +3035,154 @@ $$('[data-longpress]').forEach(btn=>{
   ['#openCustomObjectPanel','#openSoundPanel','#openBaseShelfPanel','#prevEvent','#nextEvent','#undoQuickPanel','#redoQuickPanel','#deleteSelectedQuick'].forEach(sel=>{
     const el=document.querySelector(sel); if(el){el.style.pointerEvents='auto';el.disabled=false;}
   });
+})();
+
+
+
+// ===== v25 FINAL: mission text + permanent SYSTEM LOG text =====
+(function(){
+  // --- Final draw rules ---
+  function v25Active(e,t){ return !!e && t>=e.start && t<=e.end; }
+  function v25Alpha(e,t){
+    return Math.min(clamp((t-e.start)/.12,0,1), clamp((e.end-t)/.12,0,1));
+  }
+  function v25Image(e){
+    if(!e.assetData) return null;
+    if(!e._v25Img){ e._v25Img=new Image(); e._v25Img.src=e.assetData; }
+    return e._v25Img;
+  }
+  function v25MissionY(e,t){
+    let y=Number(e.y??50);
+    const warningOn=events.some(x=>x.id!==e.id && x.type==='warning' && v25Active(x,t));
+    if(warningOn && y<61) y=63;
+    return y;
+  }
+
+  // WARNING is a fixed finished asset. No custom text is drawn over it.
+  drawWarning=function(c,w,h,e,t){
+    const img=v25Image(e);
+    if(img && img.complete && img.naturalWidth){
+      const iw=w*.72, ih=iw*(img.naturalHeight/img.naturalWidth);
+      const x=(w-iw)/2, y=(Number(e.y??45)/100*h)-ih/2;
+      c.save(); c.globalAlpha=v25Alpha(e,t);
+      if(e.glow){c.shadowColor='rgba(255,74,112,.9)';c.shadowBlur=22;}
+      c.drawImage(img,x,y,iw,ih); c.restore();
+      return;
+    }
+    const dur=Math.max(.1,e.end-e.start),p=clamp((t-e.start)/dur,0,1);
+    c.save(); c.globalAlpha=e.blink?(.55+.45*Math.sin(p*10*Math.PI)):1;
+    const pw=w*.83,ph=h*.11,x=panelX(e,w,pw),y=(e.y??45)/100*h-ph/2;
+    c.fillStyle='rgba(36,2,14,.88)';c.strokeStyle='#ff4166';c.lineWidth=3;roundRect(c,x,y,pw,ph,14,true,true);
+    c.fillStyle='#ff5272';c.font=`900 ${w*.052}px ui-monospace,monospace`;c.textAlign='center';c.fillText('⚠ WARNING',x+pw/2,y+ph*.52);
+    c.restore();
+  };
+
+  // MISSION: draw the material, then put the typed text in the long empty part of the banner.
+  drawMission=function(c,w,h,e,t){
+    const img=v25Image(e);
+    const label=String(e.text||'MISSION').trim();
+    if(img && img.complete && img.naturalWidth){
+      const iw=w*.78, ih=iw*(img.naturalHeight/img.naturalWidth);
+      const x=(w-iw)/2, y=(v25MissionY(e,t)/100*h)-ih/2;
+      const a=v25Alpha(e,t);
+      c.save(); c.globalAlpha=a;
+      if(e.glow){c.shadowColor='rgba(112,170,255,.95)';c.shadowBlur=20;}
+      c.drawImage(img,x,y,iw,ih);
+      c.globalAlpha=a;
+      c.textAlign='center'; c.textBaseline='middle';
+      c.font=`900 ${Math.max(15,w*.030)}px -apple-system,BlinkMacSystemFont,sans-serif`;
+      c.lineWidth=Math.max(3,w*.008); c.strokeStyle='rgba(0,0,0,.92)'; c.fillStyle='#fff';
+      const tx=x+iw*.63, ty=y+ih*.60;
+      // Keep it clearly readable even on the phone-size preview.
+      const maxW=iw*.56;
+      let s=label;
+      while(s.length>1 && c.measureText(s).width>maxW) s=s.slice(0,-1);
+      if(s!==label) s=s.slice(0,Math.max(1,s.length-1))+'…';
+      c.strokeText(s,tx,ty,maxW); c.fillText(s,tx,ty,maxW);
+      c.restore();
+      return;
+    }
+    const pw=w*.84,ph=h*.14,x=panelX(e,w,pw),y=(v25MissionY(e,t)/100*h)-ph/2;
+    c.save(); c.globalAlpha=v25Alpha(e,t);
+    const g=c.createLinearGradient(0,0,pw,ph);g.addColorStop(0,'rgba(61,21,97,.95)');g.addColorStop(1,'rgba(7,14,42,.95)');
+    c.fillStyle=g;c.strokeStyle='#a66cff';c.lineWidth=3;roundRect(c,x,y,pw,ph,15,true,true);
+    c.fillStyle='#d7c1ff';c.font=`900 ${w*.028}px ui-monospace,monospace`;c.textAlign='left';c.fillText('MISSION',x+pw*.07,y+ph*.30);
+    c.fillStyle='#fff';c.font=`900 ${w*.034}px -apple-system,sans-serif`;wrapText(c,label,x+pw*.58,y+ph*.59,pw*.64,w*.041,'center');c.restore();
+  };
+
+  // SYSTEM: NEVER create another panel. The event only writes inside the permanent SYSTEM LOG built into BASE.
+  drawSystem=function(c,w,h,e,t){
+    const label=String(e.text||'SYSTEM').trim();
+    const a=v25Alpha(e,t);
+    c.save(); c.globalAlpha=a;
+    c.textAlign='left'; c.textBaseline='middle';
+    c.fillStyle='#fff'; c.strokeStyle='rgba(0,0,0,.95)'; c.lineWidth=Math.max(2,w*.006);
+    c.shadowColor='rgba(255,54,217,.9)'; c.shadowBlur=Math.max(3,w*.009);
+    c.font=`900 ${Math.max(13,w*.026)}px -apple-system,BlinkMacSystemFont,sans-serif`;
+    // Permanent SYSTEM LOG empty area in the BASE artwork.
+    const tx=w*.305, ty=h*.797, maxW=w*.60;
+    let s=label;
+    while(s.length>1 && c.measureText(s).width>maxW) s=s.slice(0,-1);
+    if(s!==label) s=s.slice(0,Math.max(1,s.length-1))+'…';
+    c.strokeText(s,tx,ty,maxW); c.fillText(s,tx,ty,maxW);
+    c.restore();
+  };
+
+  // --- Final editor cleanup ---
+  const _v25RenderEditor=renderEditor;
+  renderEditor=function(){
+    _v25RenderEditor();
+    const e=getSelected(), box=$('#editor');
+    if(!e||!box) return;
+    const fields=[...box.querySelectorAll('.field')];
+    if(e.type==='warning'){
+      fields.forEach(f=>{const l=f.querySelector('label'); if(l && /WARNING.*文字/.test(l.textContent)) f.remove();});
+    }
+    if(e.type==='system'){
+      fields.forEach(f=>{
+        const l=f.querySelector('label'); if(!l)return;
+        if(/SYSTEM.*文字/.test(l.textContent)) l.textContent='下のSYSTEM LOGに表示する文字';
+      });
+      [...box.querySelectorAll('.row')].forEach(row=>{
+        const t=row.textContent||'';
+        if(t.includes('自動配置 / 左右') && t.includes('縦位置 %')) row.remove();
+      });
+    }
+  };
+
+  // --- Final quick bindings. Replace nodes to remove every old click listener. ---
+  function v25Replace(id){
+    const old=document.getElementById(id); if(!old)return null;
+    const neo=old.cloneNode(true); old.replaceWith(neo); return neo;
+  }
+  const warning=v25Replace('quickWarningFinal');
+  const mission=v25Replace('quickMissionFinal');
+  const system=v25Replace('quickSystemFinal');
+
+  if(warning){
+    const sm=warning.querySelector('small'); if(sm)sm.textContent='固定素材';
+    warning.onclick=()=>{
+      if(!duration)return toast('先に動画を入れてね');
+      const e=addEvent('warning',current,{text:'WARNING',assetKey:'warning',assetData:DRIVE_ASSET_DATA.warning,side:'center',y:45,source:'quick-fixed'});
+      renderTimeline();renderEditor();refreshLog();render();toast(`${fmt(e.start)} に WARNING 追加`);
+    };
+  }
+  if(mission){
+    mission.onclick=()=>{
+      if(!duration)return toast('先に動画を入れてね');
+      const value=window.prompt('MISSION に入れる文字を入力してね',''); if(value===null)return;
+      const e=addEvent('mission',current,{text:String(value).trim()||'MISSION',assetKey:'mission',assetData:DRIVE_ASSET_DATA.mission,side:'center',y:50,source:'quick-text'});
+      renderTimeline();renderEditor();refreshLog();render();toast(`${fmt(e.start)} に MISSION 追加`);
+    };
+  }
+  if(system){
+    system.onclick=()=>{
+      if(!duration)return toast('先に動画を入れてね');
+      const value=window.prompt('SYSTEM LOG に入れる文字を入力してね',''); if(value===null)return;
+      const e=addEvent('system',current,{text:String(value).trim()||'SYSTEM',source:'system-log-text'});
+      renderTimeline();renderEditor();refreshLog();render();toast(`${fmt(e.start)} に SYSTEM LOG文字 追加`);
+    };
+  }
 })();
 
 })();
@@ -3249,5 +3418,294 @@ $$('[data-longpress]').forEach(btn=>{
   };
 })();
 </script>
+
+<style id="v27-research-adoption">
+.research-adopt-group{border-color:rgba(72,220,255,.2);background:linear-gradient(135deg,rgba(73,206,255,.06),rgba(126,102,255,.04))}
+.research-adopt-group .quick-group-head b{display:flex;align-items:center;gap:6px}
+.research-adopt-group .quick-group-head b:before{content:"🧪";font-size:12px}
+.research-adopt-wrap{display:grid;gap:8px}
+.research-adopt-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.research-adopt-note{font-size:10px;line-height:1.45;color:#d7ddff;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:8px 10px}
+.research-adopt-note strong{color:#fff}
+.research-adopt-sep{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);margin:2px 0}
+.research-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 7px;border-radius:999px;font-size:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);margin:0 5px 5px 0}
+.research-btn{min-width:0;min-height:44px;padding:7px 5px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:#fff;font-size:9px;line-height:1.15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.research-btn span{font-size:14px;line-height:1}
+.research-btn b{font-size:10px}
+.research-btn small{font-size:8px;color:#c8d3ff}
+.research-btn:hover{transform:translateY(-1px);border-color:rgba(110,228,255,.35);box-shadow:0 10px 20px rgba(0,0,0,.18)}
+.research-btn.story{background:linear-gradient(180deg,rgba(83,122,255,.15),rgba(83,122,255,.04))}
+.research-btn.audio{background:linear-gradient(180deg,rgba(255,111,174,.14),rgba(255,111,174,.04))}
+.research-btn.effect{background:linear-gradient(180deg,rgba(63,235,202,.15),rgba(63,235,202,.04))}
+.research-mini-title{font-size:9px;color:#c0cbff;margin:0 0 2px 2px}
+.research-scan-overlay{position:absolute;inset:12% 8%;pointer-events:none;overflow:hidden;border-radius:18px}
+.research-scan-overlay:before{content:"";position:absolute;left:0;right:0;height:36%;top:-40%;background:linear-gradient(180deg,rgba(95,246,255,0),rgba(95,246,255,.12),rgba(95,246,255,.75),rgba(95,246,255,.12),rgba(95,246,255,0));box-shadow:0 0 22px rgba(95,246,255,.45);animation:researchScanMove .9s linear infinite}
+.research-scan-overlay:after{content:"";position:absolute;inset:0;border:1px solid rgba(95,246,255,.22);border-radius:18px}
+@keyframes researchScanMove{0%{transform:translateY(0)}100%{transform:translateY(360%)}}
+.research-dim-indicator{position:absolute;left:12px;right:12px;bottom:10px;padding:6px 9px;border-radius:999px;background:rgba(3,8,25,.62);border:1px solid rgba(255,255,255,.08);color:#fbe5ff;font-size:10px;text-align:center;backdrop-filter:blur(10px);pointer-events:none}
+#soundModal .research-sound-picks{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)}
+#soundModal .research-sound-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:8px}
+#soundModal .research-sound-grid .btn{min-width:0;padding:8px 6px;font-size:10px;line-height:1.2}
+#soundModal .research-sound-desc{font-size:10px;color:#cfd7ff;line-height:1.45}
+@media (max-width:760px){
+  .research-adopt-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .research-btn{min-height:40px;padding:6px 3px;font-size:8px}
+  .research-btn span{font-size:13px}
+  .research-btn b{font-size:9px}
+  .research-btn small{font-size:7px}
+  #soundModal .research-sound-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+</style>
+<script id="v27-research-adoption-script">
+(function(){
+  const $ = (s,r=document)=>r.querySelector(s);
+  const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+  const SOUND_PRESETS=[
+    {label:'SYSTEM ピコン',name:'SE SYSTEM ピコン',kind:'se',dur:.45,vol:.9,icon:'🔔'},
+    {label:'警告 SE',name:'SE 警告',kind:'se',dur:.65,vol:.95,icon:'⚠️'},
+    {label:'解析 SE',name:'SE 解析',kind:'se',dur:.65,vol:.8,icon:'💬'},
+    {label:'スキャン SE',name:'SE スキャン',kind:'se',dur:.8,vol:.85,icon:'📡'},
+    {label:'判定 / CLEAR',name:'SE 判定 / CLEAR',kind:'se',dur:.6,vol:.92,icon:'✅'},
+    {label:'決定音',name:'SE 決定音',kind:'se',dur:.5,vol:.85,icon:'🎯'},
+    {label:'最終衝撃',name:'SE 最終衝撃',kind:'se',dur:.65,vol:1,icon:'💥'},
+    {label:'BGM 音量DOWN',name:'BGM 音量DOWN',kind:'bgm',dur:1.2,vol:.45,icon:'🎵'}
+  ];
+
+  function ensureVideo(){
+    if(!(window.duration>0)){ window.toast && toast('先に動画を入れてね'); return false; }
+    return true;
+  }
+  function eventEnd(sec){ return Math.min(window.duration||sec, window.current + sec); }
+  function jumpToEvent(e){
+    if(!e) return;
+    if(typeof window.selectedId!=='undefined') window.selectedId=e.id;
+    if(typeof window.setTime==='function') setTime(e.start);
+    if(typeof window.renderTimeline==='function') renderTimeline();
+    if(typeof window.renderEditor==='function') renderEditor();
+    if(typeof window.refreshLog==='function') refreshLog();
+    if(typeof window.render==='function') render();
+  }
+  function addSystemLog(text, secs=2.6, extra={}){
+    if(!ensureVideo()) return;
+    const e=addEvent('system', current, Object.assign({
+      end:eventEnd(secs),
+      text:text,
+      source:'system-log-text',
+      side:'center',
+      y:73
+    }, extra||{}));
+    jumpToEvent(e);
+    toast && toast(`${fmt(e.start)} に SYSTEM LOG 追加`);
+  }
+  function addMissionBanner(text, secs=3.2, extra={}){
+    if(!ensureVideo()) return;
+    const e=addEvent('mission', current, Object.assign({
+      end:eventEnd(secs),
+      text:text,
+      assetKey:'mission',
+      assetData:window.DRIVE_ASSET_DATA?.mission,
+      side:'center',
+      y:50,
+      source:'research-mission'
+    }, extra||{}));
+    jumpToEvent(e);
+    toast && toast(`${fmt(e.start)} に ${text} 追加`);
+  }
+  function addWarningBanner(){
+    if(!ensureVideo()) return;
+    const e=addEvent('warning', current, {
+      end:eventEnd(1.8),
+      text:'危険生物の可能性',
+      assetKey:'warning',
+      assetData:window.DRIVE_ASSET_DATA?.warning,
+      side:'center',
+      y:45,
+      source:'research-warning',
+      glow:true,
+      blink:true
+    });
+    jumpToEvent(e);
+    toast && toast(`${fmt(e.start)} に WARNING 追加`);
+  }
+  function addIdentified(text='カブトムシ ♀'){
+    if(!ensureVideo()) return;
+    const e=addEvent('system', current, {
+      end:eventEnd(2.1),
+      text:text,
+      assetKey:'identified',
+      assetData:window.DRIVE_ASSET_DATA?.identified,
+      side:'center',
+      y:45,
+      source:'research-identified',
+      glow:true
+    });
+    jumpToEvent(e);
+    toast && toast(`${fmt(e.start)} に IDENTIFIED 追加`);
+  }
+  function addStatusLog(){
+    addSystemLog('NEW STATUS\n関係性：----',2.8,{source:'system-log-text'});
+  }
+  function addResearchSound(preset){
+    if(!ensureVideo()) return;
+    const e=addEvent('sound', current, {
+      end:eventEnd(preset.dur||.6),
+      soundKind:preset.kind||'se',
+      name:preset.name,
+      volume:Number(preset.vol??.9),
+      source:'research-sound'
+    });
+    jumpToEvent(e);
+    toast && toast(`${fmt(e.start)} に ${preset.label} 追加`);
+  }
+  function addScanEffect(){
+    if(!ensureVideo()) return;
+    const e=addEvent('object', current, {
+      end:eventEnd(1.1),
+      name:'スキャン',
+      effectKind:'scan',
+      x:50,y:50,scale:25,
+      source:'research-effect'
+    });
+    jumpToEvent(e);
+    toast && toast(`${fmt(e.start)} に スキャン演出 追加`);
+  }
+  function addBgmDown(){
+    addResearchSound(SOUND_PRESETS.find(x=>x.name==='BGM 音量DOWN'));
+  }
+
+  function injectResearchPanel(){
+    const quickMain=$('.quick-group.quick-group-main');
+    if(!quickMain || $('#researchAdoptGroup')) return;
+    quickMain.insertAdjacentHTML('afterend', `
+      <section class="quick-group research-adopt-group" id="researchAdoptGroup">
+        <div class="quick-group-head"><b>研究採用セット</b><span>役割があるものだけ先頭に</span></div>
+        <div class="research-adopt-wrap">
+          <div class="research-adopt-note">
+            <span class="research-chip">HOOK → 謎 → 更新 → 判明 → 第二の謎 → オチ</span>
+            <span class="research-chip">やりすぎ演出より、意味の更新を優先</span>
+            <div class="research-adopt-sep"></div>
+            <strong>今回すぐ使うもの</strong> を先に置いたよ。台本の流れに沿って足せるようにしてある。追加後はそのイベントが自動で選択されるから、そのまま文言だけ直せばOK。
+          </div>
+          <div>
+            <div class="research-mini-title">ストーリー進行</div>
+            <div class="research-adopt-grid">
+              <button class="research-btn story" data-research-add="event"><span>📝</span><b>EVENT</b><small>下ログ</small></button>
+              <button class="research-btn story" data-research-add="warning"><span>⚠️</span><b>WARNING</b><small>危険認知</small></button>
+              <button class="research-btn story" data-research-add="missionUpdate"><span>📘</span><b>MISSION UPDATE</b><small>次の謎</small></button>
+              <button class="research-btn story" data-research-add="identified"><span>✅</span><b>IDENTIFIED</b><small>正体判明</small></button>
+              <button class="research-btn story" data-research-add="missionClear"><span>🏁</span><b>MISSION CLEAR</b><small>閉じる</small></button>
+            </div>
+          </div>
+          <div>
+            <div class="research-mini-title">オチ / 補助</div>
+            <div class="research-adopt-grid">
+              <button class="research-btn story" data-research-add="status"><span>💞</span><b>NEW STATUS</b><small>オチ</small></button>
+              <button class="research-btn effect" data-research-add="freeze"><span>⏸️</span><b>間を作る</b><small>一時停止</small></button>
+              <button class="research-btn effect" data-research-add="scan"><span>📡</span><b>期待を作る</b><small>スキャン</small></button>
+              <button class="research-btn effect" data-research-add="shake"><span>〰️</span><b>驚き</b><small>画面揺れ</small></button>
+              <button class="research-btn effect" data-research-add="pop"><span>💥</span><b>衝撃</b><small>ボンッ＋フェード</small></button>
+            </div>
+          </div>
+          <div>
+            <div class="research-mini-title">音の役割プリセット</div>
+            <div class="research-adopt-grid">
+              <button class="research-btn audio" data-research-sound="SE SYSTEM ピコン"><span>🔔</span><b>ピコン</b><small>SYSTEM</small></button>
+              <button class="research-btn audio" data-research-sound="SE 警告"><span>🚨</span><b>警告SE</b><small>WARNING</small></button>
+              <button class="research-btn audio" data-research-sound="SE 解析"><span>💬</span><b>解析SE</b><small>情報更新</small></button>
+              <button class="research-btn audio" data-research-sound="SE スキャン"><span>📡</span><b>スキャンSE</b><small>判明前</small></button>
+              <button class="research-btn audio" data-research-sound="SE 判定 / CLEAR"><span>✅</span><b>判定音</b><small>PAYOFF</small></button>
+              <button class="research-btn audio" data-research-sound="SE 決定音"><span>🎯</span><b>決定音</b><small>STATUS</small></button>
+              <button class="research-btn audio" data-research-sound="SE 最終衝撃"><span>💥</span><b>衝撃音</b><small>ツッコミ</small></button>
+              <button class="research-btn audio" data-research-sound="BGM 音量DOWN"><span>🎵</span><b>BGM DOWN</b><small>溜め</small></button>
+              <button class="research-btn effect" data-research-add="sourceZoom"><span>🔎</span><b>視線誘導</b><small>元動画ズーム</small></button>
+              <button class="research-btn story" data-research-add="object"><span>🖼️</span><b>個別素材</b><small>布団 / 虫</small></button>
+            </div>
+          </div>
+        </div>
+      </section>
+    `);
+  }
+
+  function bindResearchPanel(){
+    const group=$('#researchAdoptGroup');
+    if(!group || group.dataset.bound) return;
+    group.dataset.bound='1';
+    group.addEventListener('click',e=>{
+      const btn=e.target.closest('[data-research-add],[data-research-sound]');
+      if(!btn) return;
+      if(btn.dataset.researchSound){
+        const preset=SOUND_PRESETS.find(x=>x.name===btn.dataset.researchSound);
+        if(preset) addResearchSound(preset);
+        return;
+      }
+      switch(btn.dataset.researchAdd){
+        case 'event': addSystemLog('EVENT\nできごとを入力',2.4); break;
+        case 'warning': addWarningBanner(); break;
+        case 'missionUpdate': addMissionBanner('MISSION UPDATED',3.0); break;
+        case 'identified': addIdentified(); break;
+        case 'missionClear': addMissionBanner('MISSION CLEAR',2.6,{source:'research-mission-clear'}); break;
+        case 'status': addStatusLog(); break;
+        case 'freeze': if(ensureVideo()) prototypeAddEffect('freeze'); break;
+        case 'scan': addScanEffect(); break;
+        case 'shake': if(ensureVideo()) prototypeAddEffect('shake'); break;
+        case 'pop': if(ensureVideo()) prototypeAddEffect('pop'); break;
+        case 'sourceZoom': if(ensureVideo()) $('#openSourceZoomPanel')?.click(); break;
+        case 'object': if(ensureVideo()) $('#openCustomObjectPanel')?.click(); break;
+      }
+    });
+  }
+
+  function injectSoundResearchPresets(){
+    const modal=$('#soundModal .modal-body');
+    if(!modal || $('#researchSoundPicks')) return;
+    const html=['<div class="research-sound-picks" id="researchSoundPicks">',
+      '<div class="research-sound-desc"><strong>研究採用プリセット</strong><br>素材名そのものではなく <b>役割</b> で置けるように追加。あとで音ファイルを差し替えても、編集ルールだけは残せる。</div>',
+      '<div class="research-sound-grid">'];
+    SOUND_PRESETS.forEach(p=>{
+      html.push(`<button class="btn ghost" type="button" data-research-modal-sound="${p.name}">${p.icon} ${p.label}</button>`);
+    });
+    html.push('</div></div>');
+    modal.insertAdjacentHTML('afterbegin', html.join(''));
+    modal.addEventListener('click',e=>{
+      const btn=e.target.closest('[data-research-modal-sound]');
+      if(!btn) return;
+      const preset=SOUND_PRESETS.find(x=>x.name===btn.dataset.researchModalSound);
+      if(preset){ addResearchSound(preset); $('#soundModal')?.classList.remove('show'); }
+    });
+  }
+
+  function extendEffectRenderer(){
+    if(window.__researchEffectPatched) return;
+    window.__researchEffectPatched=true;
+    const prev=window.prototypeRenderEffects;
+    window.prototypeRenderEffects=function(){
+      if(typeof prev==='function') prev();
+      const layer=$('#effectLayer');
+      if(!layer) return;
+      const fx=(window.events||[]).filter(e=>e.type==='object' && e.effectKind && window.current>=e.start && window.current<e.end);
+      fx.forEach(e=>{
+        if(e.effectKind==='scan'){
+          const mark=document.createElement('div');
+          mark.className='research-scan-overlay';
+          layer.appendChild(mark);
+        }
+      });
+      const dim=(window.events||[]).some(e=>e.type==='sound' && e.name==='BGM 音量DOWN' && window.current>=e.start && window.current<e.end);
+      if(dim){
+        const tag=document.createElement('div');
+        tag.className='research-dim-indicator';
+        tag.textContent='BGM DOWN';
+        layer.appendChild(tag);
+      }
+    };
+  }
+
+  injectResearchPanel();
+  bindResearchPanel();
+  injectSoundResearchPresets();
+  extendEffectRenderer();
+})();
+</script>
+
 </body>
 </html>
