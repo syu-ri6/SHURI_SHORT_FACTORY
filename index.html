@@ -3355,239 +3355,286 @@ $$('[data-longpress]').forEach(btn=>{
   cleanResearchSounds();
   // No DOM-wide MutationObserver here. Rewriting text inside its own callback can
   // create a self-triggering mutation loop on mobile and freeze the editor.
+// ===== v31 FINAL: research-driven semantics + reliable effects + audible SE =====
+(function(){
+  const style=document.createElement('style');
+  style.id='v31-final-runtime-style';
+  style.textContent=`
+    #previewPhone{transform-origin:center center}
+    .v31-shake{animation:v31Shake .34s linear both!important}
+    .v31-punch{animation:v31Punch .28s cubic-bezier(.15,.85,.25,1) both!important}
+    @keyframes v31Shake{0%,100%{transform:translate(0,0)}15%{transform:translate(-7px,2px)}30%{transform:translate(6px,-3px)}45%{transform:translate(-5px,-2px)}60%{transform:translate(4px,3px)}75%{transform:translate(-2px,1px)}}
+    @keyframes v31Punch{0%{transform:scale(1)}35%{transform:scale(1.13)}100%{transform:scale(1)}}
+    .v31-fx{position:absolute;inset:0;pointer-events:none;z-index:90;overflow:hidden}
+    .v31-whiteflash{background:#fff;animation:v31White .12s ease-out both}
+    @keyframes v31White{0%{opacity:0}25%{opacity:.96}100%{opacity:0}}
+    .v31-blackout{background:#000;animation:v31Black .18s ease-out both}
+    @keyframes v31Black{0%{opacity:0}45%{opacity:.94}100%{opacity:0}}
+    .v31-flash{background:rgba(255,255,255,.18);animation:v31Flash .55s steps(5,end) both}
+    @keyframes v31Flash{0%,40%,80%{opacity:0}20%,60%,100%{opacity:.82}}
+    .v31-pop{display:flex;align-items:center;justify-content:center;font-weight:1000;font-size:clamp(28px,10vw,58px);color:#fff;text-shadow:0 0 8px #ff38c8,0 0 18px #ff38c8;animation:v31Pop .5s cubic-bezier(.15,.85,.25,1) both}
+    @keyframes v31Pop{0%{transform:scale(.65);opacity:0}35%{transform:scale(1.18);opacity:.88}100%{transform:scale(1.02);opacity:0}}
+    .v31-surprise{display:flex;align-items:flex-start;justify-content:flex-end;padding:12% 10%;font-weight:1000;font-size:clamp(44px,15vw,84px);color:#ff3a4d;text-shadow:0 0 10px rgba(255,40,70,.95),0 0 24px rgba(255,40,70,.72);animation:v31Surprise .7s ease-out both}
+    @keyframes v31Surprise{0%{transform:translateY(-16px) scale(.7);opacity:0}28%{transform:translateY(0) scale(1.16);opacity:1}100%{transform:scale(1);opacity:0}}
+    .v31-scan{inset:8% 6%;border:1px solid rgba(68,236,255,.35);border-radius:18px}
+    .v31-scan:before{content:"";position:absolute;left:0;right:0;height:26%;top:-28%;background:linear-gradient(180deg,transparent,rgba(69,236,255,.12),rgba(69,236,255,.78),rgba(69,236,255,.12),transparent);box-shadow:0 0 24px rgba(69,236,255,.55);animation:v31Scan .9s linear infinite}
+    @keyframes v31Scan{to{transform:translateY(480%)}}
+    .v31-freeze{display:flex;align-items:center;justify-content:center;color:#fff;font-size:34px;text-shadow:0 0 14px rgba(255,255,255,.75);background:rgba(5,8,24,.08)}
+    .v31-rewind{display:flex;align-items:center;justify-content:center;color:#fff;font-size:38px;text-shadow:0 0 14px rgba(255,255,255,.75)}
+  `;
+  document.head.appendChild(style);
+
+  // ---------- semantic sound engine ----------
+  let v31AudioCtx=null;
+  let v31NoiseBuffer=null;
+  const v31PlayedSounds=new Set();
+  const v31TriggeredFx=new Set();
+  let v31PrevTime=0;
+
+  function v31Audio(){
+    if(!v31AudioCtx){
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC)return null;
+      v31AudioCtx=new AC();
+    }
+    if(v31AudioCtx.state==='suspended')v31AudioCtx.resume().catch(()=>{});
+    return v31AudioCtx;
+  }
+  function v31Tone(freq=720,dur=.1,vol=.13,type='sine',delay=0){
+    const ac=v31Audio(); if(!ac)return;
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.type=type;o.frequency.setValueAtTime(freq,ac.currentTime+delay);
+    g.gain.setValueAtTime(.0001,ac.currentTime+delay);
+    g.gain.exponentialRampToValueAtTime(Math.max(.002,vol),ac.currentTime+delay+.008);
+    g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+delay+dur);
+    o.connect(g);g.connect(ac.destination);o.start(ac.currentTime+delay);o.stop(ac.currentTime+delay+dur+.03);
+  }
+  function v31Noise(dur=.12,vol=.07,delay=0){
+    const ac=v31Audio(); if(!ac)return;
+    if(!v31NoiseBuffer){
+      v31NoiseBuffer=ac.createBuffer(1,Math.floor(ac.sampleRate*.5),ac.sampleRate);
+      const d=v31NoiseBuffer.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    }
+    const src=ac.createBufferSource(),g=ac.createGain(),f=ac.createBiquadFilter();
+    src.buffer=v31NoiseBuffer;f.type='highpass';f.frequency.value=900;
+    g.gain.setValueAtTime(vol,ac.currentTime+delay);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+delay+dur);
+    src.connect(f);f.connect(g);g.connect(ac.destination);src.start(ac.currentTime+delay);src.stop(ac.currentTime+delay+dur+.03);
+  }
+  function v31PlaySemantic(name){
+    const n=String(name||'').toLowerCase();
+    if(n.includes('bgm'))return;
+    if(n.includes('警告')){v31Tone(210,.12,.16,'sawtooth');v31Tone(160,.16,.14,'sawtooth',.13);v31Tone(210,.12,.12,'sawtooth',.31);return;}
+    if(n.includes('スキャン')){for(let i=0;i<5;i++)v31Tone(420+i*90,.07,.08,'square',i*.07);return;}
+    if(n.includes('判定')||n.includes('clear')){v31Tone(620,.09,.13,'sine');v31Tone(820,.11,.13,'sine',.09);v31Tone(1080,.16,.12,'sine',.20);return;}
+    if(n.includes('決定')){v31Tone(740,.08,.12,'square');v31Tone(980,.12,.11,'square',.08);return;}
+    if(n.includes('衝撃')){v31Noise(.16,.10);v31Tone(95,.18,.14,'sine');return;}
+    if(n.includes('巻き戻')){for(let i=0;i<5;i++)v31Tone(760-i*100,.05,.07,'square',i*.04);return;}
+    // SYSTEM / MISSION default picon
+    v31Tone(880,.07,.11,'sine');v31Tone(1220,.09,.10,'sine',.065);
+  }
+  function v31AddSound(name,dur=.55,volume=.9,source='semantic'){
+    const e=addEvent('sound',current,{end:Math.min(duration,current+dur),soundKind:'se',name,volume,source});
+    v31PlaySemantic(name);
+    v31PlayedSounds.add(e.id);
+    return e;
+  }
+
+  // ---------- fixed overlay drawing ----------
+  function v31EventAlpha(e,t,fade=.12){return Math.min(clamp((t-e.start)/fade,0,1),clamp((e.end-t)/fade,0,1));}
+  function v31Image(e){
+    if(!e.assetData)return null;
+    if(!e._v31img){e._v31img=new Image();e._v31img.src=e.assetData;}
+    return e._v31img;
+  }
+
+  // WARNING is fixed artwork. No extra text prompt.
+  drawWarning=function(c,w,h,e,t){
+    const img=v31Image(e),a=v31EventAlpha(e,t);
+    if(img&&img.complete&&img.naturalWidth){
+      const iw=w*.72,ih=iw*(img.naturalHeight/img.naturalWidth),x=(w-iw)/2,y=(Number(e.y??42)/100*h)-ih/2;
+      c.save();c.globalAlpha=a;if(e.glow){c.shadowColor='rgba(255,47,88,.95)';c.shadowBlur=24;}c.drawImage(img,x,y,iw,ih);c.restore();return;
+    }
+    c.save();c.globalAlpha=a;const pw=w*.80,ph=h*.10,x=(w-pw)/2,y=h*.39;c.fillStyle='rgba(38,0,12,.92)';c.strokeStyle='#ff3359';c.lineWidth=4;roundRect(c,x,y,pw,ph,16,true,true);c.fillStyle='#fff';c.font=`1000 ${w*.050}px -apple-system,sans-serif`;c.textAlign='center';c.fillText('⚠ WARNING',w/2,y+ph*.60);c.restore();
+  };
+
+  // MISSION uses the clean mission material and keeps text inside the long black body.
+  drawMission=function(c,w,h,e,t){
+    const img=v31Image(e),a=v31EventAlpha(e,t),label=String(e.text||'').trim();
+    if(img&&img.complete&&img.naturalWidth){
+      const iw=w*.80,ih=iw*(img.naturalHeight/img.naturalWidth),x=(w-iw)/2;
+      let yy=Number(e.y??49);
+      if(events.some(o=>o.id!==e.id&&o.type==='warning'&&t>=o.start&&t<o.end)&&yy<58)yy=61;
+      const y=yy/100*h-ih/2;
+      c.save();c.globalAlpha=a;if(e.glow){c.shadowColor='rgba(78,194,255,.9)';c.shadowBlur=18;}c.drawImage(img,x,y,iw,ih);
+      // body area excludes crown and bunny. One line first, then shrink/wrap only when needed.
+      const tx=x+iw*.57,ty=y+ih*.67,maxW=iw*.50;
+      let fs=w*.034;c.textAlign='center';c.textBaseline='middle';c.fillStyle='#fff';c.strokeStyle='rgba(0,0,0,.92)';c.lineWidth=Math.max(2,w*.006);c.font=`1000 ${fs}px -apple-system,BlinkMacSystemFont,sans-serif`;
+      while(fs>w*.025 && c.measureText(label).width>maxW){fs-=1;c.font=`1000 ${fs}px -apple-system,BlinkMacSystemFont,sans-serif`;}
+      if(c.measureText(label).width<=maxW){c.strokeText(label,tx,ty);c.fillText(label,tx,ty);}
+      else{
+        const chars=[...label];let l1='',l2='';for(const ch of chars){if(c.measureText(l1+ch).width<maxW)l1+=ch;else l2+=ch;}
+        fs=w*.026;c.font=`1000 ${fs}px -apple-system,BlinkMacSystemFont,sans-serif`;const lh=fs*1.15;c.strokeText(l1,tx,ty-lh*.52);c.fillText(l1,tx,ty-lh*.52);c.strokeText(l2,tx,ty+lh*.52);c.fillText(l2,tx,ty+lh*.52);
+      }
+      c.restore();return;
+    }
+  };
+
+  // SYSTEM normal events write into the permanent large BASE log. IDENTIFIED keeps its dedicated material.
+  const v31OldSystem=drawSystem;
+  drawSystem=function(c,w,h,e,t){
+    if(e.assetKey==='identified'&&e.assetData){
+      const img=v31Image(e),a=v31EventAlpha(e,t);if(img&&img.complete&&img.naturalWidth){const iw=w*.76,ih=iw*(img.naturalHeight/img.naturalWidth),x=(w-iw)/2,y=(Number(e.y??46)/100*h)-ih/2;c.save();c.globalAlpha=a;c.drawImage(img,x,y,iw,ih);c.restore();return;}
+    }
+    if(e.source==='system-log-text'||e.source==='semantic-system'||e.source==='semantic-status'||!e.assetData){
+      const a=v31EventAlpha(e,t),raw=String(e.text||'SYSTEM').trim(),manual=raw.split(/\n+/).filter(Boolean).slice(0,2);
+      c.save();c.globalAlpha=a;c.textAlign='left';c.textBaseline='middle';c.fillStyle='#fff';c.shadowColor='rgba(255,45,215,.72)';c.shadowBlur=Math.max(3,w*.008);
+      let fs=w*(manual.length>1?.031:.038),x=w*.175,maxW=w*.67,centerY=h*.786;c.font=`1000 ${fs}px -apple-system,BlinkMacSystemFont,sans-serif`;
+      if(manual.length>1){const lh=fs*1.24;manual.forEach((line,i)=>{let s=line;while(s.length>1&&c.measureText(s).width>maxW)s=s.slice(0,-1);c.fillText(s,x,centerY+(i-.5)*lh);});}
+      else{let s=manual[0]||raw;while(fs>w*.028&&c.measureText(s).width>maxW){fs-=1;c.font=`1000 ${fs}px -apple-system,BlinkMacSystemFont,sans-serif`;}c.fillText(s,x,centerY);}
+      c.restore();return;
+    }
+    v31OldSystem(c,w,h,e,t);
+  };
+
+  // ---------- effect runtime ----------
+  prototypeRenderEffects=function(){
+    const layer=$('#effectLayer'),phone=$('#previewPhone');if(!layer||!phone)return;
+    layer.innerHTML='';phone.classList.remove('v31-shake','v31-punch','prototype-effect-shake','prototype-effect-zoom','prototype-effect-flash','prototype-effect-pop','prototype-effect-blackout','prototype-effect-whiteflash','prototype-effect-punchzoom');
+    const fx=events.filter(e=>e.type==='object'&&e.effectKind&&current>=e.start&&current<e.end);
+    fx.forEach(e=>{
+      const kind=e.effectKind;
+      if(kind==='shake')phone.classList.add('v31-shake');
+      if(kind==='punchzoom'||kind==='hitzoom'||kind==='zoom')phone.classList.add('v31-punch');
+      const add=(cls,txt='')=>{const d=document.createElement('div');d.className='v31-fx '+cls;if(txt)d.textContent=txt;layer.appendChild(d);};
+      if(kind==='pop')add('v31-pop','ボンッ');
+      if(kind==='surprise')add('v31-surprise','!');
+      if(kind==='flash')add('v31-flash');
+      if(kind==='whiteflash')add('v31-whiteflash');
+      if(kind==='blackout')add('v31-blackout');
+      if(kind==='scan')add('v31-scan');
+      if(kind==='freeze')add('v31-freeze','⏸');
+      if(kind==='rewind')add('v31-rewind','⏪');
+    });
+  };
+
+  prototypeAddEffect=function(kind){
+    if(!duration)return toast('先に動画を入れてね');
+    const cfg={
+      shake:{name:'驚き',dur:.40,se:null},
+      pop:{name:'衝撃',dur:.52,se:'SE 最終衝撃'},
+      surprise:{name:'注目',dur:.72,se:'SE SYSTEM ピコン'},
+      flash:{name:'注意を戻す',dur:.55,se:null},
+      whiteflash:{name:'強い衝撃',dur:.16,se:'SE 最終衝撃'},
+      blackout:{name:'場面転換',dur:.20,se:null},
+      punchzoom:{name:'感情ピーク',dur:.30,se:null},
+      hitzoom:{name:'感情ピーク',dur:.30,se:null},
+      freeze:{name:'間を作る',dur:.45,se:null},
+      rewind:{name:'反復オチ',dur:.55,se:'SE 巻き戻し'},
+      scan:{name:'判明への期待',dur:1.0,se:'SE スキャン'}
+    }[kind]||{name:kind,dur:.6,se:null};
+    const e=addEvent('object',current,{end:Math.min(duration,current+cfg.dur),name:cfg.name,effectKind:kind,x:50,y:50,scale:25,source:'v31-effect'});
+    if(cfg.se)v31AddSound(cfg.se,Math.min(.65,cfg.dur),.9,'v31-effect');
+    selectedId=e.id;renderTimeline();renderEditor();refreshLog();render();toast(`${fmt(e.start)} に ${cfg.name} 追加`);return e;
+  };
+
+  function v31Runtime(prev,t){
+    // Sound events fire once when playhead crosses the start point.
+    for(const e of events.filter(x=>x.type==='sound'&&x.soundKind==='se')){
+      if(prev<=e.start&&t>=e.start&&!v31PlayedSounds.has(e.id)){v31PlayedSounds.add(e.id);v31PlaySemantic(e.name);}
+    }
+    // Time effects need real playback control, not just a visual icon.
+    for(const e of events.filter(x=>x.type==='object'&&x.effectKind)){
+      if(!(prev<=e.start&&t>=e.start)||v31TriggeredFx.has(e.id))continue;
+      if(e.effectKind==='freeze'&&playing){
+        v31TriggeredFx.add(e.id);video.pause();playing=false;$('#playBtn').textContent='▶';const hold=Math.max(180,Math.min(650,(e.end-e.start)*1000));setTimeout(()=>{if(video.src){video.play().then(()=>{playing=true;$('#playBtn').textContent='❚❚';v31PrevTime=video.currentTime;tick();}).catch(()=>{})}},hold);
+      }
+      if(e.effectKind==='rewind'&&playing){v31TriggeredFx.add(e.id);const back=Math.min(.6,Math.max(.25,e.end-e.start));video.currentTime=Math.max(0,e.start-back);current=video.currentTime;}
+    }
+  }
+
+  tick=function(){
+    if(!playing)return;
+    const now=video.currentTime;current=now;v31Runtime(v31PrevTime,now);v31PrevTime=now;
+    if(current>=duration-.02){playing=false;$('#playBtn').textContent='▶';cancelAnimationFrame(raf);return;}
+    render();raf=requestAnimationFrame(tick);
+  };
+  const v31SetTime=setTime;
+  setTime=function(t){
+    const next=clamp(t,0,duration||0);if(next<v31PrevTime-.05){for(const e of events){if(e.start>=next){v31PlayedSounds.delete(e.id);v31TriggeredFx.delete(e.id);}}}v31PrevTime=next;v31SetTime(next);
+  };
+
+  // ---------- semantic bundles ----------
+  function v31Refresh(e){selectedId=e?.id||selectedId;sortEvents();renderTimeline();renderEditor();refreshLog();render();}
+  function v31Warning(){if(!duration)return toast('先に動画を入れてね');const e=addEvent('warning',current,{end:Math.min(duration,current+1.0),text:'WARNING',assetKey:'warning',assetData:DRIVE_ASSET_DATA.warning,side:'center',y:42,glow:true,source:'v31-warning'});v31AddSound('SE 警告',.62,.95,'v31-warning');v31Refresh(e);}
+  function v31Mission(label=''){if(!duration)return toast('先に動画を入れてね');let value=label||window.prompt('MISSION に入れる文字を入力してね','');if(value===null)return;value=String(value).trim()||'MISSION';const e=addEvent('mission',current,{end:Math.min(duration,current+2.7),text:value,assetKey:'mission',assetData:DRIVE_ASSET_DATA.mission,side:'center',y:49,source:'v31-mission'});v31AddSound('SE SYSTEM ピコン',.44,.9,'v31-mission');v31Refresh(e);}
+  function v31System(label=''){if(!duration)return toast('先に動画を入れてね');let value=label||window.prompt('SYSTEM LOG に入れる文字を入力してね','');if(value===null)return;value=String(value).trim()||'SYSTEM';const e=addEvent('system',current,{end:Math.min(duration,current+2.4),text:value,source:'system-log-text'});v31AddSound('SE SYSTEM ピコン',.42,.82,'v31-system');v31Refresh(e);}
+  function v31Identified(label='カブトムシ ♀'){if(!duration)return toast('先に動画を入れてね');const e=addEvent('system',current,{end:Math.min(duration,current+1.8),text:label,assetKey:'identified',assetData:DRIVE_ASSET_DATA.identified,side:'center',y:46,source:'v31-identified'});v31AddSound('SE 判定 / CLEAR',.6,.92,'v31-identified');v31Refresh(e);}
+  function v31Clear(){v31Mission('MISSION CLEAR');}
+  function v31Status(){v31System('NEW STATUS\n関係性：----');}
+
+  function v31Replace(id,fn,small){
+    const old=document.getElementById(id);if(!old)return null;const el=old.cloneNode(true);old.replaceWith(el);if(small){const s=el.querySelector('small');if(s)s.textContent=small;}el.onclick=e=>{e.preventDefault();e.stopPropagation();fn();};return el;
+  }
+  v31Replace('quickWarningFinal',v31Warning,'表示＋警告SE');
+  v31Replace('quickMissionFinal',()=>v31Mission(),'表示＋ピコン');
+  v31Replace('quickSystemFinal',()=>v31System(),'LOG＋ピコン');
+  v31Replace('quickEffectShake',()=>prototypeAddEffect('shake'),'画面揺れ');
+
+  // Every visible effect button is rebound after all earlier patches.
+  document.querySelectorAll('.quick-group-reaction [data-effect],.quick-group-support [data-effect]').forEach(old=>{
+    const btn=old.cloneNode(true);old.replaceWith(btn);btn.onclick=e=>{e.preventDefault();e.stopPropagation();prototypeAddEffect(btn.dataset.effect);};
+  });
+
+  // Research panel uses the exact same semantic bundles, so behavior stays unified.
+  const rg=document.getElementById('researchAdoptGroup');
+  if(rg){
+    const clean=rg.cloneNode(true);rg.replaceWith(clean);
+    clean.addEventListener('click',ev=>{
+      const b=ev.target.closest('[data-research-add],[data-research-sound]');if(!b)return;ev.preventDefault();ev.stopPropagation();
+      if(b.dataset.researchSound){v31AddSound(b.dataset.researchSound,.55,.9,'research');return;}
+      const k=b.dataset.researchAdd;
+      if(k==='event')return v31System('EVENT\nできごとを入力');
+      if(k==='warning')return v31Warning();
+      if(k==='missionUpdate')return v31Mission('MISSION UPDATED');
+      if(k==='identified')return v31Identified();
+      if(k==='missionClear')return v31Clear();
+      if(k==='status')return v31Status();
+      if(k==='freeze')return prototypeAddEffect('freeze');
+      if(k==='scan')return prototypeAddEffect('scan');
+      if(k==='shake')return prototypeAddEffect('shake');
+      if(k==='pop')return prototypeAddEffect('pop');
+      if(k==='sourceZoom')return $('#openSourceZoomPanel')?.click();
+      if(k==='object')return $('#openCustomObjectPanel')?.click();
+    });
+  }
+
+  // Make sound preset buttons actually audible, while still placing timeline events.
+  document.querySelectorAll('[data-sound-kind]').forEach(old=>{
+    const btn=old.cloneNode(true);old.replaceWith(btn);btn.onclick=e=>{e.preventDefault();e.stopPropagation();if(!duration)return toast('先に動画を入れてね');const kind=btn.dataset.soundKind,name=btn.dataset.soundName||'SE';const ev=addEvent('sound',current,{soundKind:kind,name,source:'v31-sound-preset'});if(kind==='se'){v31PlaySemantic(name);v31PlayedSounds.add(ev.id);}renderTimeline();renderEditor();refreshLog();render();$('#soundModal')?.classList.remove('show');};
+  });
+
+  // Labels communicate purpose first, technique second.
+  const labels={
+    pop:['衝撃','ボンッ＋SE'],shake:['驚き','画面揺れ'],punchzoom:['感情ピーク','瞬間ズーム'],freeze:['間を作る','一時停止'],flash:['注意を戻す','点滅'],whiteflash:['強い衝撃','白フラ＋SE'],blackout:['場面転換','短い暗転'],rewind:['反復オチ','巻き戻し＋SE']
+  };
+  document.querySelectorAll('[data-effect]').forEach(btn=>{const v=labels[btn.dataset.effect];if(!v)return;const b=btn.querySelector('b'),s=btn.querySelector('small');if(b)b.textContent=v[0];if(s)s.textContent=v[1];});
+
+  v31PrevTime=current;
+})();
+
+
 })();
 
 })();
 </script>
 
-<script>
-(() => {
-  const grid = document.querySelector('.grid');
-  const center = document.querySelector('.center-col');
-  const preview = document.getElementById('previewCard');
-  const marker = document.createComment('preview-home');
-  if (!grid || !center || !preview) return;
-  preview.parentNode.insertBefore(marker, preview);
-  function placePreview(){
-    if (window.matchMedia('(max-width:760px)').matches) {
-      if (preview.parentNode !== grid) grid.insertBefore(preview, grid.firstChild);
-    } else {
-      if (preview.parentNode !== center) marker.parentNode.insertBefore(preview, marker.nextSibling);
-    }
-  }
-  placePreview();
-  window.addEventListener('resize', placePreview);
-
-
-// ===== v18: separate QUICK from Drive, keep frequent effects visible =====
-(function(){
-  const st=document.createElement('style');
-  st.id='v18-quick-drive-separation';
-  st.textContent=`
-    .v10-quick-strip{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:7px!important;overflow:visible!important;padding:2px 0 8px!important}
-    .v10-q{min-width:0!important;min-height:66px!important;padding:7px 3px!important;border-radius:14px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:2px!important}
-    .v10-q span{font-size:18px!important;line-height:1!important}.v10-q b{font-size:9.5px!important;line-height:1.08!important}.v10-q small{font-size:7.5px!important;opacity:.72!important;line-height:1!important}
-    #driveShelf .drive-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
-    .factory-blackout{position:absolute;inset:0;background:#000;animation:factoryBlackout .52s ease-out both}
-    @keyframes factoryBlackout{0%{opacity:0}35%{opacity:.88}100%{opacity:0}}
-    .factory-hitzoom{position:absolute;inset:0;border:3px solid rgba(255,255,255,.45);box-shadow:inset 0 0 45px rgba(255,80,120,.18);animation:factoryHitZoom .45s ease-out both}
-    @keyframes factoryHitZoom{0%{transform:scale(.82);opacity:0}40%{transform:scale(1.04);opacity:.82}100%{transform:scale(1);opacity:0}}
-    @media(max-width:760px){.v10-quick-strip{grid-template-columns:repeat(5,minmax(0,1fr))!important}}
-  `;
-  document.head.appendChild(st);
-
-  const strip=$('.v10-quick-strip');
-  if(strip){
-    strip.innerHTML=`
-      <button class="v10-q warning" data-q="warning"><span>⚠️</span><b>WARNING</b><small>文字入力</small></button>
-      <button class="v10-q mission" data-q="mission"><span>📘</span><b>MISSION</b><small>文字入力</small></button>
-      <button class="v10-q system" data-q="system"><span>💬</span><b>SYSTEM</b><small>文字入力</small></button>
-      <button class="v10-q hpdown" data-q="hpdown"><span>💔</span><b>HP減少</b><small>ダメージ</small></button>
-      <button class="v10-q hpup" data-q="hpup"><span>💚</span><b>HP回復</b><small>回復</small></button>
-      <button class="v10-q effect" data-q="shake"><span>〰️</span><b>揺らす</b><small>即追加</small></button>
-      <button class="v10-q effect" data-q="pop"><span>💥</span><b>ボンッ</b><small>中央フェード</small></button>
-      <button class="v10-q surprise" data-q="surprise"><span>❗️</span><b>びっくり</b><small>赤・右上</small></button>
-      <button class="v10-q effect" data-q="flash"><span>✨</span><b>点滅</b><small>即追加</small></button>
-      <button class="v10-q effect" data-q="zoom"><span>🔎</span><b>元動画ズーム</b><small>範囲指定</small></button>
-      <button class="v10-q effect" data-q="hitzoom"><span>💢</span><b>強ズーム</b><small>パンチ</small></button>
-      <button class="v10-q effect" data-q="blackout"><span>🌑</span><b>暗転</b><small>一瞬</small></button>
-      <button class="v10-q object" data-q="object"><span>🖼️</span><b>素材追加</b><small>個別</small></button>
-      <button class="v10-q sound" data-q="sound"><span>🎵</span><b>BGM/SE</b><small>音追加</small></button>
-      <button class="v10-q system" data-q="base"><span>🎮</span><b>BASE</b><small>切替</small></button>`;
-  }
-
-  // remove duplicate helper buttons now represented in QUICK
-  const zoomMini=$('#openSourceZoomPanel'); if(zoomMini) zoomMini.style.display='none';
-  const baseMini=$('#openBaseShelfPanel'); if(baseMini) baseMini.style.display='none';
-
-  function quickHpUp(){
-    if(!duration)return toast('先に動画を入れてね');
-    const now=Math.round(hpAt(current));
-    const e=addEvent('hp',current,{from:now,to:Math.min(100,now+20),source:'factory-heal'});
-    toast(`${fmt(e.start)} に HP回復 追加`);
-  }
-  function quickHpDown(){
-    if(!duration)return toast('先に動画を入れてね');
-    const e=addEvent('hp',current,{source:'factory-damage'});
-    toast(`${fmt(e.start)} に HP低下 追加`);
-  }
-
-  // extend effect insertion with two practical effects
-  const __addFx=prototypeAddEffect;
-  prototypeAddEffect=function(kind){
-    if(['hitzoom','blackout'].includes(kind)){
-      if(!duration)return toast('先に動画を入れてね');
-      const names={hitzoom:'強ズーム',blackout:'暗転'};
-      const durations={hitzoom:.5,blackout:.65};
-      const e=addEvent('object',current,{end:Math.min(duration,current+durations[kind]),name:names[kind],effectKind:kind,x:50,y:50,scale:25,source:'factory-effect'});
-      toast(`${fmt(e.start)} に ${names[kind]} 追加`);
-      return e;
-    }
-    return __addFx(kind);
-  };
-
-  const __renderFx=prototypeRenderEffects;
-  prototypeRenderEffects=function(){
-    __renderFx();
-    const layer=$('#effectLayer');
-    if(!layer)return;
-    events.filter(e=>e.type==='object'&&e.effectKind&&current>=e.start&&current<e.end).forEach(e=>{
-      if(e.effectKind==='hitzoom'){
-        const x=document.createElement('div');x.className='factory-hitzoom';layer.appendChild(x);
-      }
-      if(e.effectKind==='blackout'){
-        const x=document.createElement('div');x.className='factory-blackout';layer.appendChild(x);
-      }
-    });
-  };
-
-  $$('[data-q]').forEach(btn=>btn.onclick=()=>{
-    const a=btn.dataset.q;
-    if(a==='warning') return addDriveAsset('warning','WARNING');
-    if(a==='mission') return addDriveAsset('mission','MISSION');
-    if(a==='system') return addDriveAsset('identified','SYSTEM');
-    if(a==='hpdown') return quickHpDown();
-    if(a==='hpup') return quickHpUp();
-    if(a==='shake'||a==='pop'||a==='surprise'||a==='flash'||a==='hitzoom'||a==='blackout') return prototypeAddEffect(a);
-    if(a==='zoom') return $('#openSourceZoomPanel')?.click();
-    if(a==='object') return $('#openCustomObjectPanel')?.click();
-    if(a==='sound') return $('#openSoundPanel')?.click();
-    if(a==='base') return $('#baseShelfModal')?.classList.add('show');
-  });
-
-  // Drive is only the material warehouse. No QUICK duplicates live here.
-  const head=$('#driveShelf .drive-shelf-head strong');
-  const sub=$('#driveShelf .drive-shelf-head span');
-  if(head) head.textContent='Drive素材';
-  if(sub) sub.textContent='動画ごとに使う素材・個別素材だけ';
-  const actions=$('#driveShelf .drive-shelf-actions');
-  const grid=$('#driveShelf .drive-grid');
-  if(actions) actions.innerHTML=`<button class="btn mini ghost active" data-drive-only-filter="すべて">すべて</button><button class="btn mini ghost" data-drive-only-filter="小物">小物</button><button class="btn mini ghost" data-drive-only-filter="UI素材">UI素材</button>`;
-  if(grid){
-    grid.innerHTML=`
-      <button class="drive-tile" data-drive-only-cat="UI素材" data-drive-only-key="systemlog" data-drive-only-label="SYSTEM LOG"><span class="drive-thumb" style="background-image:url('${DRIVE_ASSET_DATA.systemlog}')"></span><span class="drive-name">SYSTEM LOG</span></button>
-      <button class="drive-tile" data-drive-only-cat="小物" data-drive-only-key="futon" data-drive-only-label="掛け布団"><span class="drive-thumb" style="background-image:url('${DRIVE_ASSET_DATA.futon}')"></span><span class="drive-name">掛け布団</span></button>
-      <button class="drive-tile" data-drive-only-cat="小物" data-drive-only-key="beetle_sil" data-drive-only-label="素材♀ シルエット"><span class="drive-thumb" style="background-image:url('${DRIVE_ASSET_DATA.beetle_sil}')"></span><span class="drive-name">素材♀ シルエット</span></button>
-      <button class="drive-tile" data-drive-only-cat="小物" data-drive-only-key="beetle_chibi" data-drive-only-label="素材♀ デフォルメ"><span class="drive-thumb" style="background-image:url('${DRIVE_ASSET_DATA.beetle_chibi}')"></span><span class="drive-name">素材♀ デフォルメ</span></button>`;
-  }
-  if(actions) $$('[data-drive-only-filter]').forEach(btn=>btn.onclick=()=>{
-    const f=btn.dataset.driveOnlyFilter;
-    $$('[data-drive-only-filter]').forEach(x=>x.classList.toggle('active',x===btn));
-    $$('[data-drive-only-cat]').forEach(tile=>tile.style.display=(f==='すべて'||tile.dataset.driveOnlyCat===f)?'':'none');
-  });
-  if(grid) $$('[data-drive-only-key]').forEach(tile=>tile.onclick=()=>{
-    const key=tile.dataset.driveOnlyKey,label=tile.dataset.driveOnlyLabel;
-    $$('#driveShelf .drive-tile').forEach(x=>x.classList.toggle('selected',x===tile));
-    $('#driveDetailTitle').textContent=label;
-    $('#driveDetailText').textContent='このDrive素材を今の再生位置に追加します。';
-    $('#driveAddSelected').disabled=false;
-    $('#driveAddSelected').onclick=()=>addDriveAsset(key,label);
-  });
-  if($('#driveAddSelected')){$('#driveAddSelected').disabled=true;$('#driveDetailTitle').textContent='Drive素材を選んでね';$('#driveDetailText').textContent='クイック追加と同じ内容はここには出しません。';}
-
-  renderTimeline();render();
-})();
-
-})();
-
-
-// ===== v20: Drive shelf = only non-constant / unused materials =====
-(function(){
-  const shelf=document.querySelector('#driveShelf');
-  if(!shelf || typeof DRIVE_ASSET_DATA==='undefined') return;
-
-  shelf.innerHTML=`
-    <div class="drive-shelf-head">
-      <div><strong>Drive素材</strong><span>常設していない素材・その回だけ使う素材だけ</span></div>
-      <div class="drive-shelf-actions">
-        <button class="btn mini ghost active" data-drive-filter="すべて">すべて</button>
-        <button class="btn mini ghost" data-drive-filter="小物">小物</button>
-        <button class="btn mini ghost" data-drive-filter="追加">追加</button>
-      </div>
-    </div>
-
-    <div class="drive-grid">
-      <button class="drive-tile action-yellow" data-drive-kind="action" data-drive-action="openObject" data-drive-cat="追加" data-drive-label="素材追加" data-drive-desc="その動画だけ使う画像素材を追加します。">
-        <span class="drive-thumb text">🖼️</span>
-        <span class="drive-name">素材追加</span>
-      </button>
-
-      <button class="drive-tile" data-drive-kind="asset" data-drive-key="futon" data-drive-cat="小物" data-drive-label="掛け布団" data-drive-desc="掛け布団素材を今の再生位置に追加します。">
-        <span class="drive-thumb" style="background-image:url('${DRIVE_ASSET_DATA.futon||''}')"></span>
-        <span class="drive-name">掛け布団</span>
-      </button>
-
-      <button class="drive-tile" data-drive-kind="asset" data-drive-key="beetle_sil" data-drive-cat="小物" data-drive-label="素材♀ シルエット" data-drive-desc="シルエット素材を今の再生位置に追加します。">
-        <span class="drive-thumb" style="background-image:url('${DRIVE_ASSET_DATA.beetle_sil||''}')"></span>
-        <span class="drive-name">素材♀ シルエット</span>
-      </button>
-
-      <button class="drive-tile" data-drive-kind="asset" data-drive-key="beetle_chibi" data-drive-cat="小物" data-drive-label="素材♀ デフォルメ" data-drive-desc="デフォルメ素材を今の再生位置に追加します。">
-        <span class="drive-thumb" style="background-image:url('${DRIVE_ASSET_DATA.beetle_chibi||''}')"></span>
-        <span class="drive-name">素材♀ デフォルメ</span>
-      </button>
-    </div>
-
-    <div class="drive-detail">
-      <div class="drive-detail-copy"><strong id="driveDetailTitle">Drive素材を選んでね</strong><span id="driveDetailText">常設ボタンと被らない素材だけここに置いてあります。</span></div>
-      <button class="btn primary" id="driveAddSelected" disabled>＋ 選択中の再生位置に追加</button>
-    </div>`;
-
-  let selected=null;
-  const title=shelf.querySelector('#driveDetailTitle');
-  const detail=shelf.querySelector('#driveDetailText');
-  const addBtn=shelf.querySelector('#driveAddSelected');
-
-  shelf.querySelectorAll('[data-drive-filter]').forEach(btn=>{
-    btn.onclick=()=>{
-      const f=btn.dataset.driveFilter;
-      shelf.querySelectorAll('[data-drive-filter]').forEach(x=>x.classList.toggle('active',x===btn));
-      shelf.querySelectorAll('.drive-tile').forEach(tile=>{
-        tile.style.display=(f==='すべて'||tile.dataset.driveCat===f)?'':'none';
-      });
-    };
-  });
-
-  shelf.querySelectorAll('.drive-tile').forEach(tile=>{
-    tile.onclick=()=>{
-      selected={
-        kind:tile.dataset.driveKind || 'asset',
-        key:tile.dataset.driveKey || tile.dataset.driveAction,
-        label:tile.dataset.driveLabel || '素材'
-      };
-      if(typeof driveSelected!=='undefined') driveSelected=selected;
-      shelf.querySelectorAll('.drive-tile').forEach(x=>x.classList.toggle('selected',x===tile));
-      title.textContent=tile.dataset.driveLabel||'素材';
-      detail.textContent=tile.dataset.driveDesc||'今の再生位置に追加します。';
-      addBtn.disabled=false;
-    };
-  });
-
-  addBtn.onclick=()=>{
-    if(!selected) return;
-    if(selected.kind==='asset') return addDriveAsset(selected.key, selected.label);
-    if(selected.key==='openObject') return document.querySelector('#openCustomObjectPanel')?.click();
-  };
+<script id="v31-responsive-preview">
+(()=>{
+  const grid=document.querySelector('.grid'),center=document.querySelector('.center-col'),preview=document.getElementById('previewCard');
+  if(!grid||!center||!preview)return;
+  const marker=document.createComment('preview-home-v31'); preview.parentNode.insertBefore(marker,preview);
+  function place(){if(window.matchMedia('(max-width:760px)').matches){if(preview.parentNode!==grid)grid.insertBefore(preview,grid.firstChild)}else{if(preview.parentNode!==center)marker.parentNode.insertBefore(preview,marker.nextSibling)}}
+  place();window.addEventListener('resize',place);
 })();
 </script>
 
