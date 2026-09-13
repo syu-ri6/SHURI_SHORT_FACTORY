@@ -1367,24 +1367,32 @@ const systemLogEnlargedImg = new Image();
 systemLogEnlargedImg.onload = ()=>{ try{ render(); }catch(_){} };
 systemLogEnlargedImg.src = SYSTEM_LOG_ENLARGED_DATA;
 
-function drawPermanentSystemLogBase(c,w,h){
-  // Enlarge the actual neon SYSTEM LOG frame. Never replace it with a plain fallback box.
+function drawPermanentSystemLogBase(c,w,h,sourceVideo,z){
+  // The old SYSTEM LOG is baked into BASE. First restore the underlying video only
+  // in that strip, then place one enlarged clean SYSTEM LOG on top.
+  const clearX=w*.025, clearY=h*.695, clearW=w*.95, clearH=h*.168;
+  c.save();
+  c.beginPath(); c.rect(clearX,clearY,clearW,clearH); c.clip();
+  if(sourceVideo && sourceVideo.readyState>=2){
+    drawCover(c,sourceVideo,w,h,z?.amount||1,z?.anchor||'center');
+  }else{
+    c.fillStyle='#000'; c.fillRect(clearX,clearY,clearW,clearH);
+  }
+  c.restore();
+
   if(!(systemLogEnlargedImg.complete && systemLogEnlargedImg.naturalWidth)) return;
-  const iw = w * .94;
+  const iw = w * .92;
   const ih = iw * (systemLogEnlargedImg.naturalHeight / systemLogEnlargedImg.naturalWidth);
   const x = (w - iw) / 2;
-  const y = h * .708;
+  const y = h * .715;
   c.save();
-  // Hide only the original smaller baked-in SYSTEM LOG, then draw the enlarged real asset.
-  c.fillStyle = 'rgba(0,3,15,.98)';
-  c.fillRect(w*.025, h*.700, w*.95, Math.min(h*.158, ih+h*.018));
   c.drawImage(systemLogEnlargedImg, x, y, iw, ih);
   c.restore();
 }
 
 function drawFrame(context,w,h,t,sourceVideo=video){context.clearRect(0,0,w,h);context.fillStyle='#000';context.fillRect(0,0,w,h);const z=zoomAt(t);if(sourceVideo.readyState>=2)drawCover(context,sourceVideo,w,h,z?.amount||1,z?.anchor||'center');
   const preset=baseAt(t),bi=assetImgs[preset]||assetImgs.normal;if(bi.complete)context.drawImage(bi,0,0,w,h);
-  drawPermanentSystemLogBase(context,w,h);
+  drawPermanentSystemLogBase(context,w,h,sourceVideo,z);
   drawHpPatch(context,w,h,hpAt(t),preset);
   for(const e of activeEvents(t)){if(e.type==='warning')drawWarning(context,w,h,e,t);if(e.type==='system')drawSystem(context,w,h,e,t);if(e.type==='mission')drawMission(context,w,h,e,t);if(e.type==='object')drawObject(context,w,h,e,t)}
 }
