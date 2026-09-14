@@ -1076,6 +1076,14 @@ html,body{
   <div class="progress" id="exportProgress"><i></i></div>
   <div class="hint" id="exportStatus" style="margin:8px 0">準備OK</div>
   <button class="btn primary grow" id="startExport">書き出し開始</button>
+  <div id="exportSaveBox" style="display:none;margin-top:12px;padding:10px;border:1px solid rgba(103,235,255,.26);border-radius:14px;background:#0b0e20">
+    <video id="exportPreview" controls playsinline muted style="width:100%;max-height:46vh;border-radius:12px;background:#000"></video>
+    <div class="hint" style="margin:8px 0">iPhoneは「写真へ保存 / 共有」を押して、共有シートから「ビデオを保存」を選んでね。</div>
+    <div class="row">
+      <button class="btn primary grow" id="shareExportVideo" type="button">写真へ保存 / 共有</button>
+      <button class="btn grow" id="downloadExportVideo" type="button">ファイル保存</button>
+    </div>
+  </div>
 </div></div></div>
 
 
@@ -1368,14 +1376,14 @@ function drawPermanentSystemLogBase(){ /* baked into BASE */ }
 function impactPopAt(t){return [...events].filter(e=>e.type==='object'&&e.effectKind==='pop'&&t>=e.start&&t<e.end).sort((a,b)=>b.start-a.start)[0]||null}
 function drawImpactBurst(c,w,h,t,e){
   if(!e)return;const dur=Math.max(.01,e.end-e.start),p=clamp((t-e.start)/dur,0,1),op=Math.sin(Math.PI*p);if(op<=.01)return;
-  const cx=w*.50,cy=h*.43,base=Math.min(w,h)*(.10+.10*Math.sin(Math.PI*Math.min(1,p/.55)));
+  const cx=w*.50,cy=h*.43,base=Math.min(w,h)*(.16+.18*Math.sin(Math.PI*Math.min(1,p/.55)));
   c.save();c.globalAlpha=op*.92;c.translate(cx,cy);c.rotate(-.08+p*.12);
   const grad=c.createRadialGradient(0,0,base*.08,0,0,base);grad.addColorStop(0,'rgba(255,48,207,.95)');grad.addColorStop(.45,'rgba(181,35,255,.92)');grad.addColorStop(.72,'rgba(37,230,255,.72)');grad.addColorStop(1,'rgba(37,230,255,0)');
   c.fillStyle=grad;c.shadowColor='rgba(255,42,214,.75)';c.shadowBlur=Math.max(5,w*.018);c.beginPath();
   const spikes=18;for(let i=0;i<spikes*2;i++){const ang=-Math.PI/2+i*Math.PI/spikes;const r=i%2===0?base*(.92+(i%6)*.035):base*.43;const x=Math.cos(ang)*r,y=Math.sin(ang)*r;if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}c.closePath();c.fill();
   c.globalAlpha=op*.78;c.rotate(.16);c.scale(.64,.64);c.fillStyle='rgba(255,49,215,.82)';c.fill();c.restore();
 }
-function drawFrame(context,w,h,t,sourceVideo=video){context.clearRect(0,0,w,h);context.fillStyle='#000';context.fillRect(0,0,w,h);const z=zoomAt(t),impact=impactPopAt(t);let impactZoom=1;if(impact){const ip=clamp((t-impact.start)/Math.max(.01,impact.end-impact.start),0,1);impactZoom=1+.055*Math.sin(Math.PI*ip)}if(sourceVideo.readyState>=2)drawCover(context,sourceVideo,w,h,(z?.amount||1)*impactZoom,z?.anchor||'center');
+function drawFrame(context,w,h,t,sourceVideo=video){context.clearRect(0,0,w,h);context.fillStyle='#000';context.fillRect(0,0,w,h);const z=zoomAt(t),impact=impactPopAt(t);let impactZoom=1;if(impact){const ip=clamp((t-impact.start)/Math.max(.01,impact.end-impact.start),0,1);impactZoom=1+.072*Math.sin(Math.PI*ip)}if(sourceVideo.readyState>=2)drawCover(context,sourceVideo,w,h,(z?.amount||1)*impactZoom,z?.anchor||'center');
   drawImpactBurst(context,w,h,t,impact);
   const preset=baseAt(t),bi=assetImgs[preset]||assetImgs.normal;if(bi.complete)context.drawImage(bi,0,0,w,h);
   // SYSTEM LOG is baked into the BASE artwork. No runtime overlay needed.
@@ -1526,7 +1534,7 @@ function renderEditor(){const e=getSelected(),box=$('#editor');$('#deleteEvent')
  if(['warning','system','mission'].includes(e.type))html+=`<div class="field"><label>${e.type==='system'?'SYSTEM LOG':typeNames[e.type]} の文字</label><textarea data-k="text">${escapeHtml(e.text)}</textarea></div><div class="row"><div class="field grow"><label>自動配置 / 左右</label><select data-k="side"><option value="left" ${e.side==='left'?'selected':''}>左</option><option value="center" ${e.side==='center'?'selected':''}>中央</option><option value="right" ${e.side==='right'?'selected':''}>右</option></select></div><div class="field grow"><label>縦位置 %</label><input data-k="y" type="number" min="5" max="95" step="1" value="${e.y??(e.type==='warning'?26:e.type==='system'?73:51)}"></div></div>`;
  if(e.type==='sound')html+=`<div class="row"><div class="field grow"><label>種類</label><select data-k="soundKind"><option value="bgm" ${e.soundKind==='bgm'?'selected':''}>BGM</option><option value="se" ${e.soundKind==='se'?'selected':''}>SE</option></select></div><div class="field grow"><label>音の名前</label><input data-k="name" value="${escapeHtml(e.name||'BGM')}"></div></div><div class="row"><div class="field grow"><label>音量</label><input data-k="volume" type="number" min="0" max="1" step="0.05" value="${Number(e.volume??0.9).toFixed(2)}"></div><div class="field grow"><label>音ファイル</label><input id="soundFile" type="file" accept="audio/*"></div></div><div class="row"><button class="btn mini ghost grow" id="soundPreviewBtn">試聴</button></div>`;
  if(e.type==='zoom')html+=`<div class="row"><div class="field grow"><label>ズーム倍率</label><input data-k="amount" type="number" min="1" max="3" step="0.05" value="${Number(e.amount||1).toFixed(2)}"></div><div class="field grow"><label>寄せる位置</label><select data-k="anchor"><option value="center" ${e.anchor==='center'?'selected':''}>中央</option><option value="top" ${e.anchor==='top'?'selected':''}>上</option><option value="bottom" ${e.anchor==='bottom'?'selected':''}>下</option><option value="left" ${e.anchor==='left'?'selected':''}>左</option><option value="right" ${e.anchor==='right'?'selected':''}>右</option></select></div></div>`;
- if(e.type==='object')html+=`<div class="prototype-object-editor"><div class="field"><label>画像</label><input id="objectFile" type="file" accept="image/*"></div><div class="field"><label>名前</label><input data-k="name" value="${escapeHtml(e.name||'個別素材')}"></div><div class="field"><label>動かすバー <small>X位置</small></label><div class="range-pair"><input data-k="x" type="range" min="0" max="100" step="1" value="${e.x??50}"><input data-k="x" type="number" min="0" max="100" value="${e.x??50}"></div></div><div class="field"><label>動かすバー <small>Y位置</small></label><div class="range-pair"><input data-k="y" type="range" min="0" max="100" step="1" value="${e.y??50}"><input data-k="y" type="number" min="0" max="100" value="${e.y??50}"></div></div><div class="field"><label>動かすバー <small>大きさ</small></label><div class="range-pair"><input data-k="scale" type="range" min="3" max="100" step="1" value="${e.scale??25}"><input data-k="scale" type="number" min="3" max="100" value="${e.scale??25}"></div></div><div class="row"><div class="field grow"><label>回転 °</label><input data-k="rotate" type="number" min="-180" max="180" value="${e.rotate??0}"></div><div class="field grow"><label>エフェクト</label><select data-k="effectKind"><option value="" ${!e.effectKind?'selected':''}>なし</option><option value="shake" ${e.effectKind==='shake'?'selected':''}>驚き（画面揺れ）</option><option value="pop" ${e.effectKind==='pop'?'selected':''}>衝撃（ボンッ）</option><option value="surprise" ${e.effectKind==='surprise'?'selected':''}>注目（！を右上）</option><option value="flash" ${e.effectKind==='flash'?'selected':''}>注意を戻す（点滅）</option><option value="zoom" ${e.effectKind==='zoom'?'selected':''}>視線誘導（ズーム）</option></select></div></div></div>`;
+ if(e.type==='object')html+=`<div class="prototype-object-editor"><div class="field"><label>画像</label><input id="objectFile" type="file" accept="image/*"></div><div class="field"><label>名前</label><input data-k="name" value="${escapeHtml(e.name||'個別素材')}"></div><div class="field"><label>動かすバー <small>X位置</small></label><div class="range-pair"><input data-k="x" type="range" min="0" max="100" step="1" value="${e.x??50}"><input data-k="x" type="number" min="0" max="100" value="${e.x??50}"></div></div><div class="field"><label>動かすバー <small>Y位置</small></label><div class="range-pair"><input data-k="y" type="range" min="0" max="100" step="1" value="${e.y??50}"><input data-k="y" type="number" min="0" max="100" value="${e.y??50}"></div></div><div class="field"><label>動かすバー <small>大きさ</small></label><div class="range-pair"><input data-k="scale" type="range" min="3" max="100" step="1" value="${e.scale??25}"><input data-k="scale" type="number" min="3" max="100" value="${e.scale??25}"></div></div><div class="row"><div class="field grow"><label>回転 °</label><input data-k="rotate" type="number" min="-180" max="180" value="${e.rotate??0}"></div><div class="field grow"><label>エフェクト</label><select data-k="effectKind"><option value="" ${!e.effectKind?'selected':''}>なし</option><option value="shake" ${e.effectKind==='shake'?'selected':''}>驚き（画面揺れ）</option><option value="pop" ${e.effectKind==='pop'?'selected':''}>衝撃（ギザ爆発）</option><option value="surprise" ${e.effectKind==='surprise'?'selected':''}>注目（！を右上）</option><option value="flash" ${e.effectKind==='flash'?'selected':''}>注意を戻す（点滅）</option><option value="zoom" ${e.effectKind==='zoom'?'selected':''}>視線誘導（ズーム）</option></select></div></div></div>`;
  html+=`<div class="hint">source: ${e.source||'manual'} / ID: ${e.id}</div>`;box.innerHTML=html;box.querySelectorAll('[data-k]').forEach(inp=>{inp.oninput=()=>{let v=inp.value;if(inp.type==='number'||inp.type==='range')v=Number(v);e[inp.dataset.k]=v;if(inp.dataset.k==='start')e.start=clamp(v,0,duration);if(inp.dataset.k==='end')e.end=clamp(v,e.start+.05,duration);box.querySelectorAll('[data-k=\"'+inp.dataset.k+'\"]').forEach(other=>{if(other!==inp)other.value=inp.value});sortEvents();renderTimeline();refreshLog();render()}});box.querySelectorAll('[data-nudge]').forEach(btn=>btn.onclick=()=>prototypeNudgeSelected(btn.dataset.nudge));const sf=$('#soundFile');if(sf)sf.onchange=ev=>{const f=ev.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{e.soundData={name:f.name,dataUrl:reader.result};e.name=e.name||f.name.replace(/\.[^.]+$/,'');renderEditor();refreshLog()};reader.readAsDataURL(f)};const sp=$('#soundPreviewBtn');if(sp)sp.onclick=()=>previewSoundEvent(e);const of=$('#objectFile');if(of)of.onchange=ev=>{const f=ev.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{const img=new Image();img.onload=()=>render();img.src=reader.result;objectImages[e.id]=img;e.objectData={name:f.name,dataUrl:reader.result};e.name=f.name.replace(/\.[^.]+$/,'');renderEditor();renderTimeline();refreshLog();render()};reader.readAsDataURL(f)}}
 $('#deleteEvent').onclick=()=>{if(!selectedId)return;events=events.filter(e=>e.id!==selectedId);delete objectImages[selectedId];selectedId=null;renderTimeline();renderEditor();refreshLog();render()};
 
@@ -1608,6 +1616,36 @@ function refreshExportFormatUI(){
   return mime;
 }
 
+
+let lastExportBlob=null,lastExportUrl='',lastExportFileName='',lastExportMime='';
+function prepareExportSave(blob,filename,mime){
+  lastExportBlob=blob;lastExportFileName=filename;lastExportMime=mime||blob.type||'video/mp4';
+  if(lastExportUrl)URL.revokeObjectURL(lastExportUrl);
+  lastExportUrl=URL.createObjectURL(blob);
+  const box=$('#exportSaveBox'),pv=$('#exportPreview');
+  if(box)box.style.display='block';
+  if(pv){pv.src=lastExportUrl;pv.load();}
+}
+if($('#shareExportVideo'))$('#shareExportVideo').onclick=async()=>{
+  if(!lastExportBlob)return toast('先に書き出してね');
+  try{
+    const file=new File([lastExportBlob],lastExportFileName,{type:lastExportMime});
+    if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
+      await navigator.share({files:[file],title:lastExportFileName});
+      return;
+    }
+  }catch(err){
+    if(err?.name==='AbortError')return;
+    console.warn('share failed',err);
+  }
+  downloadBlob(lastExportBlob,lastExportFileName);
+  toast('ファイル保存に切り替えました');
+};
+if($('#downloadExportVideo'))$('#downloadExportVideo').onclick=()=>{
+  if(!lastExportBlob)return toast('先に書き出してね');
+  downloadBlob(lastExportBlob,lastExportFileName);
+};
+
 $('#startExport').onclick=async()=>{
   if(!duration)return toast('先に動画を入れてね');
   if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream){
@@ -1624,8 +1662,20 @@ $('#startExport').onclick=async()=>{
   const [ew,eh]=$('#exportSize').value.split('x').map(Number);
   const ec=document.createElement('canvas');
   ec.width=ew;ec.height=eh;
-  const ex=ec.getContext('2d');
+  ec.style.cssText='position:fixed;left:-4px;bottom:-4px;width:2px;height:2px;opacity:.001;pointer-events:none;z-index:-1';
+  document.body.appendChild(ec);
+  const ex=ec.getContext('2d',{alpha:false,desynchronized:false});
+
+  const old=video.currentTime,was=!video.paused;
+  video.pause();
+  await seekVideo(0);
+  current=0;
+  drawFrame(ex,ew,eh,0,video);
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+
   const stream=ec.captureStream(30);
+  const exportVideoTrack=stream.getVideoTracks()[0]||null;
+  if(exportVideoTrack?.requestFrame)exportVideoTrack.requestFrame();
 
   let audioCtx=null,srcNode=null,dest=null;
   try{
@@ -1672,12 +1722,8 @@ $('#startExport').onclick=async()=>{
   const chunks=[];
   rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
 
-  const old=video.currentTime,was=!video.paused;
-  video.pause();
-  await seekVideo(0);
-  current=0;
-
   const prog=$('#exportProgress'),bar=prog.querySelector('i');
+  const saveBox=$('#exportSaveBox');if(saveBox)saveBox.style.display='none';
   prog.classList.add('show');
   $('#startExport').disabled=true;
   $('#exportStatus').textContent=`0% 書き出し中… ${ext.toUpperCase()}`;
@@ -1686,7 +1732,8 @@ $('#startExport').onclick=async()=>{
   rec.onstop=()=>{
     const blobType=actualMime || (ext==='mp4'?'video/mp4':'video/webm');
     const filename=(videoFileName||'short').replace(/\.[^.]+$/,'')+'_factory.'+ext;
-    downloadBlob(new Blob(chunks,{type:blobType}),filename);
+    const blob=new Blob(chunks,{type:blobType});
+    prepareExportSave(blob,filename,blobType);
     done=true;
   };
 
@@ -1697,6 +1744,7 @@ $('#startExport').onclick=async()=>{
     function loop(){
       current=video.currentTime;
       drawFrame(ex,ew,eh,current,video);
+      if(exportVideoTrack?.requestFrame)exportVideoTrack.requestFrame();
       render();
       const p=clamp(current/duration,0,1);
       bar.style.width=(p*100).toFixed(1)+'%';
@@ -1712,13 +1760,14 @@ $('#startExport').onclick=async()=>{
   while(!done)await sleep(100);
 
   $('#exportStatus').textContent=ext==='mp4'
-    ? '完了。MP4で保存しました。'
-    : '完了。WebMで保存しました。このブラウザではMP4録画に未対応です。';
+    ? '書き出し完了。下の「写真へ保存 / 共有」を押して保存してね。'
+    : '書き出し完了。WebMです。下の保存ボタンから保存してね。';
   $('#startExport').disabled=false;
   bar.style.width='100%';
 
   if(srcNode){try{srcNode.disconnect()}catch{}}
   if(audioCtx){try{await audioCtx.close()}catch{}}
+  try{ec.remove()}catch{}
   await seekVideo(old);
   setTime(old);
   if(was){video.play();playing=true;tick()}
@@ -1985,7 +2034,7 @@ function prototypeRenderEffects(){
 function prototypeAddEffect(kind){
   if(!duration)return toast('先に動画を入れてね');
   const durations={shake:.8,pop:.65,zoom:1.1,flash:.55,surprise:1.1,blackout:.15,whiteflash:.12,punchzoom:.25,freeze:.5,rewind:.4};
-  const names={shake:'驚き（画面揺れ）',pop:'衝撃（ボンッ）',zoom:'視線誘導（ズーム）',flash:'注意を戻す（点滅）',surprise:'注目（！マーク）',blackout:'場面転換（暗転）',whiteflash:'強い衝撃（白フラッシュ）',punchzoom:'感情ピーク（瞬間ズーム）',freeze:'間を作る（一時停止）',rewind:'反復オチ（巻き戻し）'};
+  const names={shake:'驚き（画面揺れ）',pop:'衝撃（ギザ爆発）',zoom:'視線誘導（ズーム）',flash:'注意を戻す（点滅）',surprise:'注目（！マーク）',blackout:'場面転換（暗転）',whiteflash:'強い衝撃（白フラッシュ）',punchzoom:'感情ピーク（瞬間ズーム）',freeze:'間を作る（一時停止）',rewind:'反復オチ（巻き戻し）'};
   const e=addEvent('object',current,{
     end:Math.min(duration,current+(durations[kind]||1)),
     name:names[kind]||'EFFECT',
@@ -3512,7 +3561,7 @@ $$('[data-longpress]').forEach(btn=>{
     if(e.source==='system-log-text'||e.source==='semantic-system'||e.source==='semantic-status'||!e.assetData){
       const a=v31EventAlpha(e,t),raw=String(e.text||'SYSTEM').trim(),manual=raw.split(/\n+/).filter(Boolean).slice(0,2);
       c.save();c.globalAlpha=a;c.textAlign='left';c.textBaseline='middle';c.fillStyle='#fff';c.shadowColor='rgba(255,45,215,.72)';c.shadowBlur=Math.max(3,w*.008);
-      let fs=w*(manual.length>1?.042:.056),x=w*.172,maxW=w*.66,centerY=h*.786;c.font=`1000 ${fs}px -apple-system,BlinkMacSystemFont,sans-serif`;
+      let fs=w*(manual.length>1?.042:.056),x=w*.172,maxW=w*.66,centerY=h*.802;c.font=`1000 ${fs}px -apple-system,BlinkMacSystemFont,sans-serif`;
       if(manual.length>1){const lh=fs*1.24;manual.forEach((line,i)=>{let s=line;while(s.length>1&&c.measureText(s).width>maxW)s=s.slice(0,-1);c.fillText(s,x,centerY+(i-.5)*lh);});}
       else{let s=manual[0]||raw;while(fs>w*.038&&c.measureText(s).width>maxW){fs-=1;c.font=`1000 ${fs}px -apple-system,BlinkMacSystemFont,sans-serif`;}c.fillText(s,x,centerY);}
       c.restore();return;
