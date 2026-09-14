@@ -880,7 +880,7 @@ html,body{
   <header class="topbar">
     <div class="brand"><div class="logo">+1</div><div><h1>SHURI SHORT FACTORY</h1><small>作業は工場へ。面白くする時間だけ人間へ。</small></div></div>
     <div class="top-actions">
-      <label class="btn ghost prototype-video-load" for="videoInput">動画読込</label>
+      <button class="btn ghost prototype-video-load" id="videoLoadTop" type="button">動画読込</button>
       <button class="btn ghost prototype-auto-layout" id="openAnalysisPage">AUTO配置</button>
       <button class="btn ghost" id="openResearchTop">研究ログ</button>
       <button class="btn primary" id="exportVideo">書き出し</button>
@@ -894,7 +894,7 @@ html,body{
       <section class="card">
         <div class="card-head"><h2>動画</h2><span class="pill"><i class="status-dot" id="videoDot"></i><span id="videoState">未読込</span></span></div>
         <div class="card-body">
-          <label class="drop prototype-hidden-drop" id="videoDrop"><input id="videoInput" type="file" accept="video/*"><strong>動画を選ぶ / ドロップ</strong><div class="hint" style="margin-top:5px">先に40秒前後へ切った動画を入れる想定</div></label>
+          <label class="drop prototype-hidden-drop" id="videoDrop"><input id="videoInput" type="file" accept="video/*,video/mp4,video/quicktime"><strong>動画を選ぶ / ドロップ</strong><div class="hint" style="margin-top:5px">先に40秒前後へ切った動画を入れる想定</div></label>
           <div id="videoMeta" class="hint" style="margin-top:8px">縦動画 9:16 推奨。元動画には素材等を焼き込まず、別レイヤーにすると後で全部直せます。</div>
           <div class="section-title prototype-old-controls">工場の自動処理</div>
           <div class="row wrap prototype-old-controls">
@@ -1396,7 +1396,9 @@ video.addEventListener('seeked',()=>{if(!playing){current=video.currentTime;rend
 $('#guideToggle').onchange=e=>$('#safeGuide').classList.toggle('show',e.target.checked);
 
 const videoInput=$('#videoInput');
-videoInput.onchange=e=>loadVideo(e.target.files[0]);
+const videoLoadTop=$('#videoLoadTop');
+if(videoLoadTop)videoLoadTop.onclick=()=>{videoInput.value='';videoInput.click();};
+videoInput.addEventListener('change',e=>loadVideo(e.target.files?.[0]||null));
 $('#videoDrop').ondragover=e=>{e.preventDefault();e.currentTarget.style.borderColor='#20e7ff'};$('#videoDrop').ondragleave=e=>e.currentTarget.style.borderColor='';$('#videoDrop').ondrop=e=>{e.preventDefault();e.currentTarget.style.borderColor='';loadVideo(e.dataTransfer.files[0])};
 function loadVideo(file){if(!file)return;if(!file.type.startsWith('video/'))return toast('動画ファイルを選んでね');videoFileName=file.name;video.src=URL.createObjectURL(file);video.load();video.onloadedmetadata=()=>{duration=video.duration||0;current=0;$('#videoDot').classList.add('ok');$('#videoState').textContent='読込済';$('#videoMeta').innerHTML=`${file.name}<br>${fmt(duration,false)} / ${(file.size/1024/1024).toFixed(1)} MB / ${video.videoWidth}×${video.videoHeight}`;if(!events.some(e=>e.type==='base'))events.push({id:id(),type:'base',start:0,end:duration||40,preset:'normal',source:'auto-default'});renderTimeline();setTime(0);refreshLog();toast('動画を読み込みました')}}
 
