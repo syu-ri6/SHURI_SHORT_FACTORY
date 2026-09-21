@@ -18,6 +18,90 @@ html,body{height:100%;overflow:hidden}.app{height:100dvh;overflow:hidden}.editor
 /* FIX4: mobile preview fit + visible horizontal affordances */
 .previewSizeBtn{font-size:14px}.videoFitBtn{position:absolute;z-index:12;right:10px;top:10px;min-height:30px;padding:5px 8px;border-radius:10px;background:rgba(10,7,19,.86);border:1px solid #5b4679;font-size:10px;backdrop-filter:blur(10px)}.app.previewLarge .previewWrap{height:min(calc(100dvh - var(--header) - 118px),calc((100vw - 12px)*16/9));padding:4px}.app.previewLarge .stage{width:min(calc(100vw - 12px),430px)!important;max-height:none!important;height:auto!important}.app.previewLarge .editorGrid>section:nth-child(2){position:absolute;left:0;right:0;bottom:calc(var(--bottom) + env(safe-area-inset-bottom));height:132px;background:rgba(8,6,17,.96);z-index:72}.app.previewLarge .timelineShell{height:64px;margin:2px 8px}.app.previewLarge .timelineTop{display:none}.app.previewLarge .timelineViewport{height:62px}.app.previewLarge .panel{display:none}.app.previewLarge .editorTop{position:relative}.app.previewLarge .transport{position:absolute;left:0;right:0;bottom:0;background:rgba(8,6,17,.88);z-index:73;padding-bottom:max(8px,env(safe-area-inset-bottom));backdrop-filter:blur(12px)}.panelGrid,.contextBar{scrollbar-width:none}.panelGrid::-webkit-scrollbar,.contextBar::-webkit-scrollbar{display:none}.panelGrid{padding-right:20px}.contextBar{padding-right:28px}.hScrollHint{position:absolute;right:5px;top:50%;transform:translateY(-50%);pointer-events:none;font-weight:900;color:#fff;background:linear-gradient(90deg,transparent,#0b0816 45%);padding:10px 4px 10px 20px}.panelHead>div{display:flex;gap:6px;align-items:center}
 </style>
+
+<style id="fix8-mobile-fullwidth-preview">
+/* FIX8: mobile 9:16 preview uses the full editor width. Width is authoritative. */
+@media (max-width:759px){
+  html,body{overflow:hidden}
+  .app{height:100dvh;overflow:hidden}
+  .editor{
+    height:calc(100dvh - var(--header));
+    overflow-x:hidden;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    padding-left:0;
+    padding-right:0;
+    padding-bottom:calc(var(--bottom) + env(safe-area-inset-bottom));
+  }
+  .editorGrid{
+    display:block;
+    height:auto;
+    width:100%;
+    margin:0;
+    padding:0;
+  }
+  .editorTop{
+    position:relative;
+    width:100%;
+    max-width:none;
+    margin:0;
+    padding:0;
+  }
+  .previewWrap{
+    box-sizing:border-box;
+    display:block;
+    position:relative;
+    width:100%;
+    height:auto;
+    max-width:none;
+    margin:0;
+    padding-top:0;
+    padding-bottom:0;
+    padding-left:env(safe-area-inset-left);
+    padding-right:env(safe-area-inset-right);
+  }
+  .stage{
+    box-sizing:border-box;
+    display:block;
+    width:100%!important;
+    height:auto!important;
+    max-width:none!important;
+    max-height:none!important;
+    min-width:0;
+    margin:0;
+    aspect-ratio:9 / 16;
+    border-radius:0;
+  }
+  .stage video,.stage canvas{
+    width:100%;
+    height:100%;
+  }
+  .transport{width:100%;margin:0}
+  .editorGrid>section:nth-child(2){
+    display:block;
+    height:auto;
+    min-height:0;
+    overflow:visible;
+  }
+  .timelineShell{margin:6px 8px 4px}
+  .timelineViewport{height:auto;max-height:210px}
+  .panel{margin:4px 8px 6px;max-height:none}
+  .app.previewLarge .previewWrap{
+    width:100%;
+    height:auto;
+    max-width:none;
+    padding-left:env(safe-area-inset-left);
+    padding-right:env(safe-area-inset-right);
+  }
+  .app.previewLarge .stage{
+    width:100%!important;
+    height:auto!important;
+    max-width:none!important;
+    max-height:none!important;
+    aspect-ratio:9 / 16;
+  }
+}
+</style>
 </head><body>
 <div id="app"></div>
 <input id="fileVideo" type="file" accept="video/*,video/mp4,video/quicktime" hidden>
