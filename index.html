@@ -158,8 +158,8 @@ class DB{
 const runtime={screen:'home',project:null,videoUrl:'',videoBlob:null,selected:null,panel:'system',laneFocus:null,pps:16,guide:'none',undo:[],redo:[],dirty:false,playing:false,speed:1,preview:false,assetCache:new Map(),mediaCache:new Map(),audioCache:new Map(),gesture:null,rangeSubtitleStart:null,exporting:false,saveTimer:null,lastFrame:0,plusMode:null};
 const BGM_DEFAULT_VOLUME=.126;
 const SE_DEFAULT_VOLUME=.20;
-const SE_SYSTEM_LOG_VOLUME=.095;
-const SE_HP_DOWN_VOLUME=.08;
+const SE_SYSTEM_LOG_VOLUME=.075;
+const SE_HP_DOWN_VOLUME=.06;
 function sePresetVolume(key){
  if(key==='system')return SE_SYSTEM_LOG_VOLUME;
  if(key==='hpDown')return SE_HP_DOWN_VOLUME;
