@@ -158,8 +158,8 @@ class DB{
 const runtime={screen:'home',project:null,videoUrl:'',videoBlob:null,selected:null,panel:'system',laneFocus:null,pps:16,guide:'none',undo:[],redo:[],dirty:false,playing:false,speed:1,preview:false,assetCache:new Map(),mediaCache:new Map(),audioCache:new Map(),gesture:null,rangeSubtitleStart:null,exporting:false,saveTimer:null,lastFrame:0,plusMode:null};
 const BGM_DEFAULT_VOLUME=.126;
 const SE_DEFAULT_VOLUME=.20;
-const SE_SYSTEM_LOG_VOLUME=.162;
-const SE_HP_DOWN_VOLUME=.108;
+const SE_SYSTEM_LOG_VOLUME=.102;
+const SE_HP_DOWN_VOLUME=.088;
 function sePresetVolume(key){
  const name=String(key||'');
  if(name.includes('8bit選択8'))return SE_SYSTEM_LOG_VOLUME;
