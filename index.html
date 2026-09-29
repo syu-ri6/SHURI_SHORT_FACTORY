@@ -186,7 +186,49 @@ html,body{height:100%;overflow:hidden}.app{height:100dvh;overflow:hidden}.editor
 }
 </style>
 
-\n<style id="v1-lane-height-distribution">\n@media (max-width:759px){\n .app:not(.panelOpen) .timelineViewport{height:calc(100% - 27px)!important;max-height:none!important}\n .app:not(.panelOpen) .timeline{height:100%!important;min-height:100%!important;display:grid!important;grid-template-rows:minmax(36px,1.35fr) repeat(7,minmax(28px,1fr))!important}\n .app:not(.panelOpen) .timeline>.lane{height:auto!important;min-height:0!important}\n .app:not(.panelOpen) .timeline>.lane.videoLane{height:auto!important;min-height:0!important}\n .app:not(.panelOpen) .timeline>.lane.focused{height:auto!important;min-height:0!important}\n .app.panelOpen .timeline{display:block!important;height:auto!important;min-height:100%!important}\n}\n</style>\n</head><body>
+\n<style id="v1-lane-height-distribution">\n@media (max-width:759px){\n .app:not(.panelOpen) .timelineViewport{height:calc(100% - 27px)!important;max-height:none!important}\n .app:not(.panelOpen) .timeline{height:100%!important;min-height:100%!important;display:grid!important;grid-template-rows:minmax(36px,1.35fr) repeat(7,minmax(28px,1fr))!important}\n .app:not(.panelOpen) .timeline>.lane{height:auto!important;min-height:0!important}\n .app:not(.panelOpen) .timeline>.lane.videoLane{height:auto!important;min-height:0!important}\n .app:not(.panelOpen) .timeline>.lane.focused{height:auto!important;min-height:0!important}\n .app.panelOpen .timeline{display:block!important;height:auto!important;min-height:100%!important}\n}\n</style>\n
+<style id="v1-lane-fill-runtime-fix">
+@media (max-width:759px){
+  .app:not(.panelOpen) .editorGrid>section:nth-child(2){
+    grid-template-rows:minmax(0,1fr)!important;
+  }
+  .app:not(.panelOpen) .timelineShell{
+    height:calc(100% - 5px)!important;
+    min-height:0!important;
+    align-self:stretch!important;
+  }
+  .app:not(.panelOpen) .timelineViewport{
+    height:calc(100% - 27px)!important;
+    min-height:0!important;
+    max-height:none!important;
+  }
+  .app:not(.panelOpen) .timeline{
+    height:100%!important;
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .app:not(.panelOpen) .timeline>.lane{
+    flex:1 1 0!important;
+    height:auto!important;
+    min-height:0!important;
+  }
+  .app:not(.panelOpen) .timeline>.lane.videoLane{
+    flex:1.35 1 0!important;
+    height:auto!important;
+    min-height:0!important;
+  }
+  .app:not(.panelOpen) .timeline>.lane.focused{
+    min-height:0!important;
+  }
+  .app:not(.panelOpen) .timeline>.lane>.track{
+    height:100%!important;
+    min-height:0!important;
+  }
+}
+</style>
+
+</head><body>
 <div id="app"></div>
 <input id="fileVideo" type="file" accept="video/*,video/mp4,video/quicktime" hidden>
 <input id="fileMaterials" type="file" accept="image/*,video/*" multiple hidden>
@@ -344,8 +386,32 @@ async function prepareVideoMeta(){if(!runtime.videoUrl&&runtime.project.video.bl
 
 const SYSTEM_DEFAULT_SE={WARNING:'warning',SCAN:'scan',IDENTIFIED:'success','SYSTEM LOG':'system',HP:'hpDown',MISSION_START:'decide',MISSION_CLEAR:'success'};
 function ensureRequiredPresetSe(){if(!runtime.project)return;let changed=false;for(const e of runtime.project.systemEvents||[]){if(!(e.children||[]).some(c=>c.kind==='se'&&c.enabled!==false)){const key=e.type==='HP'?((e.hpSet!=null?e.hpSet-currentHp(e.start):e.hpDelta)>=0?'hpUp':'hpDown'):(SYSTEM_DEFAULT_SE[e.type]||'system');e.children=e.children||[];e.children.unshift(childSe(key,0));changed=true}}for(const e of runtime.project.emotionSets||[]){if(!(e.children||[]).some(c=>c.kind==='se'&&c.enabled!==false)){const key=EMOTIONS[e.name]?.se||'system';e.children=e.children||[];e.children.unshift(childSe(key,0));changed=true}}if(changed)db.putProject(runtime.project).catch(()=>{})}
+async function restoreMissingVideoTimelineMeta(v){
+ if(!runtime.project||!v||!Number.isFinite(v.duration)||v.duration<=0)return false;
+ const clips=runtime.project.video.clips||[];
+ const missingClips=!clips.length;
+ const missingDuration=!(Number(runtime.project.duration)>0);
+ if(!missingClips&&!missingDuration)return false;
+ if(missingClips){
+  runtime.project.video.clips=[{id:uid('clip'),timelineStart:0,timelineEnd:v.duration,srcStart:0,srcEnd:v.duration,volume:1}];
+ }
+ if(missingDuration){
+  const maxEnd=(runtime.project.video.clips||[]).reduce((m,c)=>Math.max(m,Number(c.timelineEnd)||0),0);
+  runtime.project.duration=maxEnd>0?maxEnd:v.duration;
+ }
+ runtime.project.playhead=clamp(runtime.project.playhead||0,0,runtime.project.duration);
+ await db.putProject(runtime.project);
+ updateTransport();
+ renderTimeline();
+ return true;
+}
 function renderEditor(){ensureRequiredPresetSe();ensureBgmVolumeDefaults();ensureSeVolumeDefaults();if(!runtime.selected)runtime.panel=null;Promise.allSettled([ASSETS.warning,ASSETS.identified,ASSETS.mission].map(loadImage));runtime.screen='editor';runtime.playing=false;$('#app').innerHTML=`<div class="app"><div class="topbar"><button class="iconbtn" id="homeBtn">⌂</button><div class="brand">SHURI SHORT STUDIO<small id="saveState">自動保存 ✓</small></div><div class="undoGroup"><button class="iconbtn" id="undoBtn">↶</button><button class="iconbtn" id="redoBtn">↷</button></div><button class="iconbtn previewSizeBtn" id="previewSizeBtn" title="プレビューサイズ">⛶</button><button class="iconbtn" id="previewBtn">👁</button></div><main class="editor"><div class="editorGrid"><section class="editorTop"><div class="previewWrap"><div class="projectLabel">PROJECT <span>9:16</span></div><div class="stage" id="stage"><video id="sourceVideo" playsinline preload="auto" src="${runtime.videoUrl||''}"></video><canvas id="previewCanvas" width="540" height="960"></canvas><div id="safeOverlay" class="safeOverlay"></div><div id="selectionBox" class="selectionBox hidden"></div></div><button class="videoFitBtn" id="videoFitBtn">表示：${runtime.project.video.fitMode==='cover'?'ぴったり':'全体'}</button></div><div class="transport"><button class="iconbtn" id="back3">↶3秒</button><button class="iconbtn" id="playBtn">▶</button><button class="btn small speed" id="speedBtn">1×</button><input class="scrub" id="scrub" type="range" min="0" max="${runtime.project.duration||1}" step="0.01" value="${runtime.project.playhead||0}"><span class="time" id="timeText">${fmt(runtime.project.playhead)}</span><button class="btn small guideSelect" id="guideBtn">UIなし</button></div></section><section><div class="timelineShell"><div class="timelineTop"><b>TIMELINE</b><span class="badge" id="zoomBadge">${runtime.pps}px/s</span><span class="timelineHelp">横スワイプで時間移動</span></div><div class="timelineViewport" id="timelineViewport"><div class="timeline" id="timeline"></div><div class="timelineCenterPlayhead" id="timelineCenterPlayhead"><span class="timelineCenterTime" id="timelineTime">${fmt(runtime.project.playhead||0)}</span></div></div></div><div class="panel" id="panel"></div></section></div></main><nav class="bottomNav" id="bottomNav">${['system','emotion','subtitle','bgm','material','plus'].map(x=>{const d={system:['⌁','SYSTEM'],emotion:['◆','感情'],subtitle:['T','字幕'],bgm:['♫','BGM'],material:['▣','素材'],plus:['＋','追加']}[x];return `<button data-panel="${x}" class="${runtime.panel===x?'active':''}"><span class="navIcon">${d[0]}</span><span class="navLabel">${d[1]}</span></button>`}).join('')}</nav><div class="contextBar hidden" id="contextBar"></div></div>`;
- const v=$('#sourceVideo');v.volume=runtime.project.video.volume??1;v.playbackRate=runtime.speed;v.addEventListener('loadeddata',()=>{seek(runtime.project.playhead||0,false);drawPreview()});v.addEventListener('timeupdate',()=>{if(!runtime.playing)return;const clip=runtime.project.video.clips.find(c=>c.id===runtime._activeClip)||clipAtTimeline(runtime.project.playhead);runtime.project.playhead=clamp(timelineFromSource(v.currentTime,clip),0,runtime.project.duration);if(clip&&runtime.project.playhead>=clip.timelineEnd-.03){const idx=runtime.project.video.clips.findIndex(c=>c.id===clip.id),next=runtime.project.video.clips[idx+1];if(next){runtime._activeClip=next.id;v.currentTime=next.srcStart}else{v.pause();runtime.playing=false;$('#playBtn').textContent='▶'}}updateTransport();renderPlayhead();triggerAudioAt(runtime.project.playhead);drawPreview()});v.addEventListener('ended',()=>{runtime.playing=false;$('#playBtn').textContent='▶';pauseBgmForBackground()});v.addEventListener('play',()=>{if(runtime.screen==='editor'){runtime.playing=true;lastBgmKey='';syncBgmPreview(true)}});v.addEventListener('pause',()=>{if(document.hidden)pauseBgmForBackground()});v.addEventListener('error',()=>toast('動画を読み込めませんでした🥲',2600));
+ const v=$('#sourceVideo');v.volume=runtime.project.video.volume??1;v.playbackRate=runtime.speed;
+let videoMetaRestored=false;
+const restoreMetaOnce=async()=>{if(videoMetaRestored)return;videoMetaRestored=true;await restoreMissingVideoTimelineMeta(v)};
+v.addEventListener('loadedmetadata',restoreMetaOnce,{once:true});
+if(v.readyState>=1)restoreMetaOnce();
+v.addEventListener('loadeddata',async()=>{await restoreMetaOnce();seek(runtime.project.playhead||0,false);drawPreview()});v.addEventListener('timeupdate',()=>{if(!runtime.playing)return;const clip=runtime.project.video.clips.find(c=>c.id===runtime._activeClip)||clipAtTimeline(runtime.project.playhead);runtime.project.playhead=clamp(timelineFromSource(v.currentTime,clip),0,runtime.project.duration);if(clip&&runtime.project.playhead>=clip.timelineEnd-.03){const idx=runtime.project.video.clips.findIndex(c=>c.id===clip.id),next=runtime.project.video.clips[idx+1];if(next){runtime._activeClip=next.id;v.currentTime=next.srcStart}else{v.pause();runtime.playing=false;$('#playBtn').textContent='▶'}}updateTransport();renderPlayhead();triggerAudioAt(runtime.project.playhead);drawPreview()});v.addEventListener('ended',()=>{runtime.playing=false;$('#playBtn').textContent='▶';pauseBgmForBackground()});v.addEventListener('play',()=>{if(runtime.screen==='editor'){runtime.playing=true;lastBgmKey='';syncBgmPreview(true)}});v.addEventListener('pause',()=>{if(document.hidden)pauseBgmForBackground()});v.addEventListener('error',()=>toast('動画を読み込めませんでした🥲',2600));
  $('#homeBtn').onclick=async()=>{await savePlayhead();renderHome()};$('#undoBtn').onclick=undo;$('#redoBtn').onclick=redo;$('#previewSizeBtn').onclick=togglePreviewSize;$('#previewBtn').onclick=showFinalPreview;$('#back3').onclick=()=>seek(Math.max(0,runtime.project.playhead-3));$('#playBtn').onclick=togglePlay;$('#speedBtn').onclick=()=>{runtime.speed=runtime.speed===1?.5:1;v.playbackRate=runtime.speed;$('#speedBtn').textContent=runtime.speed+'×'};$('#scrub').oninput=e=>seek(+e.target.value,false);$('#scrub').onchange=savePlayhead;$('#guideBtn').onclick=cycleGuide;$('#videoFitBtn').onclick=toggleVideoFit;$('#bottomNav').onclick=e=>{const b=e.target.closest('[data-panel]');if(!b)return;runtime.panel=b.dataset.panel;if(runtime.panel!=='plus')runtime.plusMode=null;renderPanel();$$('#bottomNav button').forEach(x=>x.classList.toggle('active',x.dataset.panel===runtime.panel))};
  bindStageGestures();syncStageTouchMode();renderEditorParts();startRenderLoop();
 }
@@ -503,7 +569,7 @@ function updateSelectionBox(w=540,h=960){const box=$('#selectionBox');if(!box)re
 function bindStageGestures(){const st=$('#stage');if(!st)return;const pointers=new Map();let start=null,moved=false;st.onpointerdown=e=>{const o=getObj();if(!o||!['subtitle','system','material'].includes(runtime.selected?.type)||o.type==='SYSTEM LOG')return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});st.setPointerCapture(e.pointerId);moved=false;if(pointers.size===1){start={x:e.clientX,y:e.clientY,ox:o.x??.5,oy:o.y??.5,scale:o.scale||1,rotation:o.rotation||0};snapshot('プレビュー位置調整')}else if(pointers.size===2){const ps=[...pointers.values()];start={...start,dist:Math.hypot(ps[1].x-ps[0].x,ps[1].y-ps[0].y),angle:Math.atan2(ps[1].y-ps[0].y,ps[1].x-ps[0].x)}}};st.onpointermove=e=>{if(!pointers.has(e.pointerId)||!start)return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});const o=getObj();if(!o)return;const rect=st.getBoundingClientRect();if(pointers.size===1){const p=[...pointers.values()][0];o.x=clamp(start.ox+(p.x-start.x)/rect.width,0,1);o.y=clamp(start.oy+(p.y-start.y)/rect.height,0,1);o.manualLocks={...(o.manualLocks||{}),position:true};moved=true}else if(pointers.size>=2&&runtime.selected.type==='material'){const ps=[...pointers.values()],dist=Math.hypot(ps[1].x-ps[0].x,ps[1].y-ps[0].y),ang=Math.atan2(ps[1].y-ps[0].y,ps[1].x-ps[0].x);o.scale=clamp(start.scale*(dist/start.dist),.05,1.5);o.rotation=start.rotation+(ang-start.angle)*180/Math.PI;o.manualLocks={...(o.manualLocks||{}),scale:true,rotation:true};moved=true}drawPreview();renderContext(false)};const end=async e=>{pointers.delete(e.pointerId);if(!pointers.size&&moved){await commit('プレビュー直接操作');start=null}};st.onpointerup=end;st.onpointercancel=end;st.onclick=e=>{if(moved)return;const candidates=[];const t=runtime.project.playhead;runtime.project.subtitles.filter(x=>visibleAt(x,t)).forEach(x=>candidates.push({type:'subtitle',id:x.id,z:x.z||30,label:'字幕'}));runtime.project.systemEvents.filter(x=>visibleAt(x,t)).forEach(x=>candidates.push({type:'system',id:x.id,z:x.z||20,label:'SYSTEM'}));runtime.project.materials.filter(x=>visibleAt(x,t)).forEach(x=>candidates.push({type:'material',id:x.id,z:x.z||10,label:'素材'}));if(!candidates.length)return;if(runtime.laneFocus){const c=candidates.filter(x=>x.type===runtime.laneFocus).sort((a,b)=>b.z-a.z)[0];if(c)return selectObj(c.type,c.id)}const top=candidates.sort((a,b)=>b.z-a.z);if(top.length>1&&Math.abs(top[0].z-top[1].z)<3)return chooserAt(e.clientX,e.clientY,top.slice(0,4));selectObj(top[0].type,top[0].id)}}
 function chooserAt(x,y,items){$('.menuPop')?.remove();const d=document.createElement('div');d.className='menuPop';d.style.cssText=`left:${clamp(x,8,innerWidth-170)}px;top:${clamp(y,70,innerHeight-220)}px`;d.innerHTML='<b style="display:block;padding:8px">どれを選ぶ？</b>'+items.map((it,i)=>`<button data-i="${i}">${it.label}</button>`).join('');d.onclick=e=>{const i=+e.target.dataset.i;if(Number.isFinite(i)){const it=items[i];selectObj(it.type,it.id);d.remove()}};document.body.append(d)}
 function timelineGeometry(){const vp=$('#timelineViewport'),vw=Math.max(1,vp?.clientWidth||innerWidth),labelW=innerWidth<760?56:72,leftPad=Math.max(0,vw/2-labelW),rightPad=vw/2,dur=Math.max(0,runtime.project?.duration||0);return {vw,labelW,leftPad,rightPad,dur,trackW:leftPad+dur*runtime.pps+rightPad}}
-function syncTimelineLaneHeight(){const app=$('.app'),vp=$('#timelineViewport'),tl=$('#timeline');if(!app||!vp||!tl)return;if(innerWidth<760&&!app.classList.contains('panelOpen')){const h=Math.max(0,vp.clientHeight);tl.style.height=h+'px';tl.style.minHeight=h+'px'}else{tl.style.height='';tl.style.minHeight=''}}
+function syncTimelineLaneHeight(){const app=$('.app'),vp=$('#timelineViewport'),tl=$('#timeline');if(!app||!vp||!tl)return;if(innerWidth<760&&!app.classList.contains('panelOpen')){const h=Math.max(0,vp.getBoundingClientRect().height);if(h>0){tl.style.height=h+'px';tl.style.minHeight='0'}}else{tl.style.height='';tl.style.minHeight=''}}
 function renderTimeline(){const tl=$('#timeline');if(!tl||!runtime.project)return;const g=timelineGeometry();tl.style.width=(g.labelW+g.trackW)+'px';tl.style.setProperty('--track-pad-left',g.leftPad+'px');tl.innerHTML=LANES.map(l=>laneHtml(l,g.trackW,g.leftPad)).join('');$$('.laneName',tl).forEach(n=>n.onclick=()=>{runtime.laneFocus=runtime.laneFocus===n.dataset.lane?null:n.dataset.lane;renderTimeline()});$$('.block',tl).forEach(bindBlock);bindTimelinePinch();bindTimelineScrub();requestAnimationFrame(()=>{syncTimelineLaneHeight();syncTimelineToPlayhead()})}
 function packTimelineRows(items){const rows=[];return items.map(o=>{const start=o.timelineStart??o.start??0,end=o.timelineEnd??o.end??start+.1;let row=rows.findIndex(lastEnd=>start>=lastEnd-.001);if(row<0){row=rows.length;rows.push(end)}else rows[row]=end;return {o,row}})}
 function laneHtml(l,trackW,leftPad=0){const focused=runtime.laneFocus===l,dim=runtime.laneFocus&&runtime.laneFocus!==l&&l!=='video';const items=laneItems(l);const packed=l==='system'?packTimelineRows(items):items.map(o=>({o,row:0}));const rowCount=Math.max(1,...packed.map(x=>x.row+1));const autoH=l==='system'&&rowCount>1?Math.max(innerWidth<760?34:48,6+rowCount*(innerWidth<760?18:27)):null;const laneStyle=autoH?` style="min-height:${autoH}px"`:'';return `<div class="lane ${l==='video'?'videoLane':''} ${focused?'focused':''} ${dim?'dim':''}" data-lane="${l}"${laneStyle}><div class="laneName" data-lane="${l}">${LANE_LABEL[l]}</div><div class="track" style="width:${trackW}px">${packed.map(x=>blockHtml(l,x.o,x.row,leftPad)).join('')}</div></div>`}
