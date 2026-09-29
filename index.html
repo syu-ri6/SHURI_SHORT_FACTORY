@@ -161,9 +161,8 @@ const SE_DEFAULT_VOLUME=.20;
 const SE_SYSTEM_LOG_VOLUME=.102;
 const SE_HP_DOWN_VOLUME=.088;
 function sePresetVolume(key){
- const name=String(key||'');
- if(name.includes('8bit選択8'))return SE_SYSTEM_LOG_VOLUME;
- if(name.includes('8bit下降10'))return SE_HP_DOWN_VOLUME;
+ if(key==='system')return SE_SYSTEM_LOG_VOLUME;
+ if(key==='hpDown')return SE_HP_DOWN_VOLUME;
  return SE_DEFAULT_VOLUME;
 }
 const BGM_VOICE_DUCK=.82;
@@ -535,7 +534,7 @@ function disposeBgmGraph(){
  bgmMediaSource=null;bgmGain=null;
 }
 async function getAudioBuffer(urlOrKey,isBlob=false){const key=(isBlob?'blob:':'url:')+urlOrKey;if(runtime.audioCache.has(key))return runtime.audioCache.get(key);const p=(async()=>{const ac=await ensureAudio();let ab;if(isBlob){const b=await db.getBlob(urlOrKey);if(!b)throw new Error('missing blob');ab=await b.arrayBuffer()}else{const r=await fetch(urlOrKey);if(!r.ok)throw new Error('missing audio');ab=await r.arrayBuffer()}return ac.decodeAudioData(ab.slice(0))})();runtime.audioCache.set(key,p);return p}
-async function playSeKey(key,vol=SE_DEFAULT_VOLUME){const def=SE[key];if(!def)return;try{const ac=await ensureAudio(),buf=await getAudioBuffer(def.url),src=ac.createBufferSource(),g=ac.createGain();g.gain.value=vol;src.buffer=buf;src.connect(g).connect(master);src.start()}catch{toast(`${def.label} SEを読み込めませんでした`,1600)}}
+async function playSeKey(key,vol=sePresetVolume(key)){const def=SE[key];if(!def)return;try{const ac=await ensureAudio(),buf=await getAudioBuffer(def.url),src=ac.createBufferSource(),g=ac.createGain();g.gain.value=vol;src.buffer=buf;src.connect(g).connect(master);src.start()}catch{toast(`${def.label} SEを読み込めませんでした`,1600)}}
 function resetAudioPass(t=runtime.project?.playhead??0,includeCurrent=false){runtime._lastAudioT=includeCurrent?t-.06:t;runtime._audioPassFired=new Set();lastSeFire.clear()}
 function triggerAudioAt(t){const prev=Number.isFinite(runtime._lastAudioT)?runtime._lastAudioT:t-.06;if(!runtime._audioPassFired)runtime._audioPassFired=new Set();if(t<prev-.02){runtime._lastAudioT=t;runtime._audioPassFired.clear();lastSeFire.clear();syncBgmPreview();return}const crossed=st=>st>prev+.0005&&st<=t+.035;const fire=(id,key,vol)=>{if(runtime._audioPassFired.has(id))return;runtime._audioPassFired.add(id);lastSeFire.set(id,t);playSeKey(key,vol)};for(const e of runtime.project.soundEffects)if(crossed(e.start))fire(e.id,e.key,seBaseVolume(e));for(const p of [...runtime.project.systemEvents,...runtime.project.emotionSets])for(const ch of p.children||[]){if(ch.kind==='se'&&ch.enabled!==false){const st=p.start+(ch.offset||0),k=p.id+':'+ch.id;if(crossed(st))fire(k,ch.key,seBaseVolume(ch))}}runtime._lastAudioT=t;syncBgmPreview()}
 const bgmUrlCache=new Map();
