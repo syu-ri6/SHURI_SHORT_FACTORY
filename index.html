@@ -228,6 +228,55 @@ html,body{height:100%;overflow:hidden}.app{height:100dvh;overflow:hidden}.editor
 }
 </style>
 
+
+<style id="v1-fixed-overlay-playhead-final">
+/*
+  FIXED PLAYHEAD
+  timelineShell
+    timelineTop
+    timelineBody
+      timelineViewport  <- ONLY THIS SCROLLS
+        timeline        <- ruler / lanes / events
+      timelineCenterPlayhead <- NEVER SCROLLS
+*/
+.timelineShell{
+  display:grid!important;
+  grid-template-rows:auto minmax(0,1fr)!important;
+}
+.timelineBody{
+  position:relative;
+  min-width:0;
+  min-height:0;
+  overflow:hidden;
+}
+.timelineBody>.timelineViewport{
+  position:relative;
+  width:100%;
+  height:100%!important;
+  max-height:none;
+  overflow-x:auto;
+}
+.timelineBody>.timelineCenterPlayhead{
+  position:absolute!important;
+  z-index:90!important;
+  left:50%!important;
+  right:auto!important;
+  top:0!important;
+  bottom:0!important;
+  width:2px!important;
+  transform:translateX(-1px)!important;
+  margin:0!important;
+  pointer-events:none!important;
+}
+@media (max-width:759px){
+  .timelineBody{height:100%}
+  .timelineBody>.timelineViewport{
+    height:100%!important;
+    max-height:none!important;
+  }
+}
+</style>
+
 </head><body>
 <div id="app"></div>
 <input id="fileVideo" type="file" accept="video/*,video/mp4,video/quicktime" hidden>
@@ -405,7 +454,7 @@ async function restoreMissingVideoTimelineMeta(v){
  renderTimeline();
  return true;
 }
-function renderEditor(){ensureRequiredPresetSe();ensureBgmVolumeDefaults();ensureSeVolumeDefaults();if(!runtime.selected)runtime.panel=null;Promise.allSettled([ASSETS.warning,ASSETS.identified,ASSETS.mission].map(loadImage));runtime.screen='editor';runtime.playing=false;$('#app').innerHTML=`<div class="app"><div class="topbar"><button class="iconbtn" id="homeBtn">⌂</button><div class="brand">SHURI SHORT STUDIO<small id="saveState">自動保存 ✓</small></div><div class="undoGroup"><button class="iconbtn" id="undoBtn">↶</button><button class="iconbtn" id="redoBtn">↷</button></div><button class="iconbtn previewSizeBtn" id="previewSizeBtn" title="プレビューサイズ">⛶</button><button class="iconbtn" id="previewBtn">👁</button></div><main class="editor"><div class="editorGrid"><section class="editorTop"><div class="previewWrap"><div class="projectLabel">PROJECT <span>9:16</span></div><div class="stage" id="stage"><video id="sourceVideo" playsinline preload="auto" src="${runtime.videoUrl||''}"></video><canvas id="previewCanvas" width="540" height="960"></canvas><div id="safeOverlay" class="safeOverlay"></div><div id="selectionBox" class="selectionBox hidden"></div></div><button class="videoFitBtn" id="videoFitBtn">表示：${runtime.project.video.fitMode==='cover'?'ぴったり':'全体'}</button></div><div class="transport"><button class="iconbtn" id="back3">↶3秒</button><button class="iconbtn" id="playBtn">▶</button><button class="btn small speed" id="speedBtn">1×</button><input class="scrub" id="scrub" type="range" min="0" max="${runtime.project.duration||1}" step="0.01" value="${runtime.project.playhead||0}"><span class="time" id="timeText">${fmt(runtime.project.playhead)}</span><button class="btn small guideSelect" id="guideBtn">UIなし</button></div></section><section><div class="timelineShell"><div class="timelineTop"><b>TIMELINE</b><span class="badge" id="zoomBadge">${runtime.pps}px/s</span><span class="timelineHelp">横スワイプで時間移動</span></div><div class="timelineViewport" id="timelineViewport"><div class="timeline" id="timeline"></div><div class="timelineCenterPlayhead" id="timelineCenterPlayhead"><span class="timelineCenterTime" id="timelineTime">${fmt(runtime.project.playhead||0)}</span></div></div></div><div class="panel" id="panel"></div></section></div></main><nav class="bottomNav" id="bottomNav">${['system','emotion','subtitle','bgm','material','plus'].map(x=>{const d={system:['⌁','SYSTEM'],emotion:['◆','感情'],subtitle:['T','字幕'],bgm:['♫','BGM'],material:['▣','素材'],plus:['＋','追加']}[x];return `<button data-panel="${x}" class="${runtime.panel===x?'active':''}"><span class="navIcon">${d[0]}</span><span class="navLabel">${d[1]}</span></button>`}).join('')}</nav><div class="contextBar hidden" id="contextBar"></div></div>`;
+function renderEditor(){ensureRequiredPresetSe();ensureBgmVolumeDefaults();ensureSeVolumeDefaults();if(!runtime.selected)runtime.panel=null;Promise.allSettled([ASSETS.warning,ASSETS.identified,ASSETS.mission].map(loadImage));runtime.screen='editor';runtime.playing=false;$('#app').innerHTML=`<div class="app"><div class="topbar"><button class="iconbtn" id="homeBtn">⌂</button><div class="brand">SHURI SHORT STUDIO<small id="saveState">自動保存 ✓</small></div><div class="undoGroup"><button class="iconbtn" id="undoBtn">↶</button><button class="iconbtn" id="redoBtn">↷</button></div><button class="iconbtn previewSizeBtn" id="previewSizeBtn" title="プレビューサイズ">⛶</button><button class="iconbtn" id="previewBtn">👁</button></div><main class="editor"><div class="editorGrid"><section class="editorTop"><div class="previewWrap"><div class="projectLabel">PROJECT <span>9:16</span></div><div class="stage" id="stage"><video id="sourceVideo" playsinline preload="auto" src="${runtime.videoUrl||''}"></video><canvas id="previewCanvas" width="540" height="960"></canvas><div id="safeOverlay" class="safeOverlay"></div><div id="selectionBox" class="selectionBox hidden"></div></div><button class="videoFitBtn" id="videoFitBtn">表示：${runtime.project.video.fitMode==='cover'?'ぴったり':'全体'}</button></div><div class="transport"><button class="iconbtn" id="back3">↶3秒</button><button class="iconbtn" id="playBtn">▶</button><button class="btn small speed" id="speedBtn">1×</button><input class="scrub" id="scrub" type="range" min="0" max="${runtime.project.duration||1}" step="0.01" value="${runtime.project.playhead||0}"><span class="time" id="timeText">${fmt(runtime.project.playhead)}</span><button class="btn small guideSelect" id="guideBtn">UIなし</button></div></section><section><div class="timelineShell"><div class="timelineTop"><b>TIMELINE</b><span class="badge" id="zoomBadge">${runtime.pps}px/s</span><span class="timelineHelp">横スワイプで時間移動</span></div><div class="timelineBody"><div class="timelineViewport" id="timelineViewport"><div class="timeline" id="timeline"></div></div><div class="timelineCenterPlayhead" id="timelineCenterPlayhead"><span class="timelineCenterTime" id="timelineTime">${fmt(runtime.project.playhead||0)}</span></div></div></div><div class="panel" id="panel"></div></section></div></main><nav class="bottomNav" id="bottomNav">${['system','emotion','subtitle','bgm','material','plus'].map(x=>{const d={system:['⌁','SYSTEM'],emotion:['◆','感情'],subtitle:['T','字幕'],bgm:['♫','BGM'],material:['▣','素材'],plus:['＋','追加']}[x];return `<button data-panel="${x}" class="${runtime.panel===x?'active':''}"><span class="navIcon">${d[0]}</span><span class="navLabel">${d[1]}</span></button>`}).join('')}</nav><div class="contextBar hidden" id="contextBar"></div></div>`;
  const v=$('#sourceVideo');v.volume=runtime.project.video.volume??1;v.playbackRate=runtime.speed;
 let videoMetaRestored=false;
 const restoreMetaOnce=async()=>{if(videoMetaRestored)return;videoMetaRestored=true;await restoreMissingVideoTimelineMeta(v)};
