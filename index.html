@@ -299,6 +299,16 @@ html,body{height:100%;overflow:hidden}.app{height:100dvh;overflow:hidden}.editor
 }
 </style>
 
+
+<style id="v1-script-editing-coexist">
+#projectPreviewWrap.scriptViewOn{position:relative!important;isolation:isolate;overflow:hidden}
+#projectPreviewWrap.scriptViewOn>#stage{position:relative!important;z-index:1;pointer-events:auto}
+#projectPreviewWrap.scriptViewOn>#scriptPane{position:relative!important;inset:auto!important;z-index:1;pointer-events:auto}
+#scriptPaneBody{position:relative;z-index:1;overscroll-behavior-y:contain;touch-action:pan-y}
+.editorTop>.transport{position:relative;z-index:3;pointer-events:auto}
+.timelineShell,.panel,.bottomNav,.contextBar{pointer-events:auto}
+</style>
+
 </head><body>
 <div id="app"></div>
 <input id="fileVideo" type="file" accept="video/*,video/mp4,video/quicktime" hidden>
@@ -353,7 +363,7 @@ class DB{
  async putAsset(a){return this.tx('assets','readwrite',s=>s.put(a))} async allAssets(){const d=await this.open();return new Promise((res,rej)=>{const q=d.transaction('assets').objectStore('assets').getAll();q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
  async set(k,v){return this.tx('settings','readwrite',s=>s.put(v,k))} async get(k){const d=await this.open();return new Promise((res,rej)=>{const q=d.transaction('settings').objectStore('settings').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
 } const db=new DB();
-const runtime={screen:'home',project:null,videoUrl:'',videoBlob:null,selected:null,panel:'system',laneFocus:null,pps:16,guide:'none',undo:[],redo:[],dirty:false,playing:false,speed:1,preview:false,assetCache:new Map(),mediaCache:new Map(),audioCache:new Map(),gesture:null,rangeSubtitleStart:null,exporting:false,saveTimer:null,lastFrame:0,plusMode:null};
+const runtime={screen:'home',project:null,videoUrl:'',videoBlob:null,selected:null,panel:'system',scriptVisible:false,scriptScrollTop:0,laneFocus:null,pps:16,guide:'none',undo:[],redo:[],dirty:false,playing:false,speed:1,preview:false,assetCache:new Map(),mediaCache:new Map(),audioCache:new Map(),gesture:null,rangeSubtitleStart:null,exporting:false,saveTimer:null,lastFrame:0,plusMode:null};
 const BGM_DEFAULT_VOLUME=.126;
 const SE_DEFAULT_VOLUME=.20;
 const SE_SYSTEM_LOG_VOLUME=.075;
@@ -432,8 +442,8 @@ function ensureBgmVolumeDefaults(){
 function newProject(title='新しいShort'){const id=uid('project'),t=nowISO();return {id,title,status:'編集中',createdAt:t,updatedAt:t,version:APP_VERSION,playhead:0,duration:0,video:{blobKey:null,name:'',volume:1,fitMode:'contain',clips:[]},script:{source:'none',text:'',notionPageId:null,title:'',analysis:null},subtitles:[],systemEvents:[],emotionSets:[],bgmIntervals:[{id:uid('bgm'),start:0,end:9999,key:'BASE',volume:BGM_DEFAULT_VOLUME,sourceStart:0,fadeIn:'auto',fadeOut:'auto',manualLocks:{}}],soundEffects:[],materials:[],effects:[],projectAssets:[],manualLocks:{},exports:[],research:{startedAt:t,editingMs:0,undoCount:0,redoCount:0,modifications:0,createdCounts:{}},settings:{fps:30,guide:'none'},thumbnail:null,lastExport:null}}
 function snapshot(label='操作'){if(!runtime.project)return;runtime.undo.push({label,state:deep(runtime.project)});if(runtime.undo.length>80)runtime.undo.shift();runtime.redo.length=0}
 async function commit(label='編集'){if(!runtime.project)return;runtime.project.updatedAt=nowISO();runtime.project.status='編集済み';runtime.project.research.modifications=(runtime.project.research.modifications||0)+1;await db.putProject(runtime.project);runtime.dirty=false;renderTimeline();renderContext();}
-async function undo(){if(!runtime.undo.length)return toast('戻せる操作がないよ');const cur=deep(runtime.project),x=runtime.undo.pop();runtime.redo.push({label:x.label,state:cur});runtime.project=x.state;runtime.project.research.undoCount=(runtime.project.research.undoCount||0)+1;await db.putProject(runtime.project);syncVideoFromProject();renderEditorParts();toast(`↶ ${x.label}`)}
-async function redo(){if(!runtime.redo.length)return toast('やり直せる操作がないよ');const cur=deep(runtime.project),x=runtime.redo.pop();runtime.undo.push({label:x.label,state:cur});runtime.project=x.state;runtime.project.research.redoCount=(runtime.project.research.redoCount||0)+1;await db.putProject(runtime.project);syncVideoFromProject();renderEditorParts();toast(`↷ ${x.label}`)}
+async function undo(){if(!runtime.undo.length)return toast('戻せる操作がないよ');const cur=deep(runtime.project),x=runtime.undo.pop();runtime.redo.push({label:x.label,state:cur});runtime.project=x.state;const scriptState=scriptReferenceState();scriptState.open=!!runtime.scriptVisible;scriptState.scrollTop=runtime.scriptScrollTop||0;runtime.project.research.undoCount=(runtime.project.research.undoCount||0)+1;await db.putProject(runtime.project);syncVideoFromProject();renderEditorParts();toast(`↶ ${x.label}`)}
+async function redo(){if(!runtime.redo.length)return toast('やり直せる操作がないよ');const cur=deep(runtime.project),x=runtime.redo.pop();runtime.undo.push({label:x.label,state:cur});runtime.project=x.state;const scriptState=scriptReferenceState();scriptState.open=!!runtime.scriptVisible;scriptState.scrollTop=runtime.scriptScrollTop||0;runtime.project.research.redoCount=(runtime.project.research.redoCount||0)+1;await db.putProject(runtime.project);syncVideoFromProject();renderEditorParts();toast(`↷ ${x.label}`)}
 function toast(msg,ms=1800){$('.toast')?.remove();const d=document.createElement('div');d.className='toast';d.textContent=msg;document.body.append(d);setTimeout(()=>d.remove(),ms)}
 function modal(title,body,actions=[]){const back=document.createElement('div');back.className='modalBack';back.innerHTML=`<div class="modal"><h2>${title}</h2><div class="modalBody">${body}</div><div class="modalActions"></div></div>`;const a=$('.modalActions',back);actions.forEach(x=>{const b=document.createElement('button');b.className='btn '+(x.primary?'primary':'');b.textContent=x.label;b.onclick=async()=>{const keep=await x.onClick?.(back);if(keep!==false)back.remove()};a.append(b)});back.addEventListener('pointerdown',e=>{if(e.target===back)back.remove()});document.body.append(back);return back}
 function escapeHtml(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
@@ -477,7 +487,10 @@ async function restoreMissingVideoTimelineMeta(v){
  renderTimeline();
  return true;
 }
-function renderEditor(){ensureRequiredPresetSe();ensureBgmVolumeDefaults();ensureSeVolumeDefaults();if(!runtime.selected)runtime.panel=null;Promise.allSettled([ASSETS.warning,ASSETS.identified,ASSETS.mission].map(loadImage));runtime.screen='editor';runtime.playing=false;$('#app').innerHTML=`<div class="app"><div class="topbar"><button class="iconbtn" id="homeBtn">⌂</button><div class="brand">SHURI SHORT STUDIO<small id="saveState">自動保存 ✓</small></div><div class="undoGroup"><button class="iconbtn" id="undoBtn">↶</button><button class="iconbtn" id="redoBtn">↷</button></div><button class="iconbtn previewSizeBtn" id="previewSizeBtn" title="プレビューサイズ">⛶</button><button class="iconbtn scriptToggleBtn ${runtime.project.settings?.scriptView?.open?'active':''}" id="scriptViewBtn" title="台本を表示" aria-pressed="${runtime.project.settings?.scriptView?.open?'true':'false'}">📄 台本</button><button class="iconbtn" id="previewBtn">👁</button></div><main class="editor"><div class="editorGrid"><section class="editorTop"><div class="previewWrap ${runtime.project.settings?.scriptView?.open?'scriptViewOn':''}" id="projectPreviewWrap"><div class="projectLabel">PROJECT <span>9:16</span></div><div class="stage" id="stage"><video id="sourceVideo" playsinline preload="auto" src="${runtime.videoUrl||''}"></video><canvas id="previewCanvas" width="540" height="960"></canvas><div id="safeOverlay" class="safeOverlay"></div><div id="selectionBox" class="selectionBox hidden"></div></div><aside class="scriptPane" id="scriptPane" aria-label="台本参照"><div class="scriptPaneHead">📄 <span class="scriptPaneTitle">${escapeHtml(runtime.project.script?.title||'台本')}</span></div><div class="scriptPaneBody" id="scriptPaneBody">${runtime.project.script?.text?escapeHtml(runtime.project.script.text):'<span class="scriptPaneEmpty">このプロジェクトには台本がありません。</span>'}</div></aside><button class="videoFitBtn" id="videoFitBtn">表示：${runtime.project.video.fitMode==='cover'?'ぴったり':'全体'}</button></div><div class="transport"><button class="iconbtn" id="back3">↶3秒</button><button class="iconbtn" id="playBtn">▶</button><button class="btn small speed" id="speedBtn">1×</button><input class="scrub" id="scrub" type="range" min="0" max="${runtime.project.duration||1}" step="0.01" value="${runtime.project.playhead||0}"><span class="time" id="timeText">${fmt(runtime.project.playhead)}</span><button class="btn small guideSelect" id="guideBtn">UIなし</button></div></section><section><div class="timelineShell"><div class="timelineTop"><b>TIMELINE</b><span class="badge" id="zoomBadge">${runtime.pps}px/s</span><span class="timelineHelp">横スワイプで時間移動</span></div><div class="timelineBody"><div class="timelineViewport" id="timelineViewport"><div class="timeline" id="timeline"></div></div><div class="timelineCenterPlayhead" id="timelineCenterPlayhead"><span class="timelineCenterTime" id="timelineTime">${fmt(runtime.project.playhead||0)}</span></div></div></div><div class="panel" id="panel"></div></section></div></main><nav class="bottomNav" id="bottomNav">${['system','emotion','subtitle','bgm','material','plus'].map(x=>{const d={system:['⌁','SYSTEM'],emotion:['◆','感情'],subtitle:['T','字幕'],bgm:['♫','BGM'],material:['▣','素材'],plus:['＋','追加']}[x];return `<button data-panel="${x}" class="${runtime.panel===x?'active':''}"><span class="navIcon">${d[0]}</span><span class="navLabel">${d[1]}</span></button>`}).join('')}</nav><div class="contextBar hidden" id="contextBar"></div></div>`;
+function renderEditor(){ensureRequiredPresetSe();ensureBgmVolumeDefaults();ensureSeVolumeDefaults();if(!runtime.selected)runtime.panel=null;
+ const savedScriptView=runtime.project?.settings?.scriptView||{};
+ runtime.scriptVisible=!!savedScriptView.open;
+ runtime.scriptScrollTop=Number(savedScriptView.scrollTop)||0;Promise.allSettled([ASSETS.warning,ASSETS.identified,ASSETS.mission].map(loadImage));runtime.screen='editor';runtime.playing=false;$('#app').innerHTML=`<div class="app"><div class="topbar"><button class="iconbtn" id="homeBtn">⌂</button><div class="brand">SHURI SHORT STUDIO<small id="saveState">自動保存 ✓</small></div><div class="undoGroup"><button class="iconbtn" id="undoBtn">↶</button><button class="iconbtn" id="redoBtn">↷</button></div><button class="iconbtn previewSizeBtn" id="previewSizeBtn" title="プレビューサイズ">⛶</button><button class="iconbtn scriptToggleBtn ${runtime.scriptVisible?'active':''}" id="scriptViewBtn" title="台本を表示" aria-pressed="${runtime.scriptVisible?'true':'false'}">📄 台本</button><button class="iconbtn" id="previewBtn">👁</button></div><main class="editor"><div class="editorGrid"><section class="editorTop"><div class="previewWrap ${runtime.scriptVisible?'scriptViewOn':''}" id="projectPreviewWrap"><div class="projectLabel">PROJECT <span>9:16</span></div><div class="stage" id="stage"><video id="sourceVideo" playsinline preload="auto" src="${runtime.videoUrl||''}"></video><canvas id="previewCanvas" width="540" height="960"></canvas><div id="safeOverlay" class="safeOverlay"></div><div id="selectionBox" class="selectionBox hidden"></div></div><aside class="scriptPane" id="scriptPane" aria-label="台本参照"><div class="scriptPaneHead">📄 <span class="scriptPaneTitle">${escapeHtml(runtime.project.script?.title||'台本')}</span></div><div class="scriptPaneBody" id="scriptPaneBody">${runtime.project.script?.text?escapeHtml(runtime.project.script.text):'<span class="scriptPaneEmpty">このプロジェクトには台本がありません。</span>'}</div></aside><button class="videoFitBtn" id="videoFitBtn">表示：${runtime.project.video.fitMode==='cover'?'ぴったり':'全体'}</button></div><div class="transport"><button class="iconbtn" id="back3">↶3秒</button><button class="iconbtn" id="playBtn">▶</button><button class="btn small speed" id="speedBtn">1×</button><input class="scrub" id="scrub" type="range" min="0" max="${runtime.project.duration||1}" step="0.01" value="${runtime.project.playhead||0}"><span class="time" id="timeText">${fmt(runtime.project.playhead)}</span><button class="btn small guideSelect" id="guideBtn">UIなし</button></div></section><section><div class="timelineShell"><div class="timelineTop"><b>TIMELINE</b><span class="badge" id="zoomBadge">${runtime.pps}px/s</span><span class="timelineHelp">横スワイプで時間移動</span></div><div class="timelineBody"><div class="timelineViewport" id="timelineViewport"><div class="timeline" id="timeline"></div></div><div class="timelineCenterPlayhead" id="timelineCenterPlayhead"><span class="timelineCenterTime" id="timelineTime">${fmt(runtime.project.playhead||0)}</span></div></div></div><div class="panel" id="panel"></div></section></div></main><nav class="bottomNav" id="bottomNav">${['system','emotion','subtitle','bgm','material','plus'].map(x=>{const d={system:['⌁','SYSTEM'],emotion:['◆','感情'],subtitle:['T','字幕'],bgm:['♫','BGM'],material:['▣','素材'],plus:['＋','追加']}[x];return `<button data-panel="${x}" class="${runtime.panel===x?'active':''}"><span class="navIcon">${d[0]}</span><span class="navLabel">${d[1]}</span></button>`}).join('')}</nav><div class="contextBar hidden" id="contextBar"></div></div>`;
  const v=$('#sourceVideo');v.volume=runtime.project.video.volume??1;v.playbackRate=runtime.speed;
 let videoMetaRestored=false;
 const restoreMetaOnce=async()=>{if(videoMetaRestored)return;videoMetaRestored=true;await restoreMissingVideoTimelineMeta(v)};
@@ -488,38 +501,40 @@ v.addEventListener('loadeddata',async()=>{await restoreMetaOnce();seek(runtime.p
  bindStageGestures();syncStageTouchMode();renderEditorParts();startRenderLoop();
 }
 
+
 function scriptReferenceState(){
  runtime.project.settings=runtime.project.settings||{};
  runtime.project.settings.scriptView=runtime.project.settings.scriptView||{open:false,scrollTop:0};
  return runtime.project.settings.scriptView;
 }
-function toggleScriptReferenceView(){
- if(!runtime.project||runtime.screen!=='editor')return;
+function persistScriptReferenceState(){
+ if(!runtime.project)return;
  const state=scriptReferenceState();
- state.open=!state.open;
- const wrap=$('#projectPreviewWrap'),btn=$('#scriptViewBtn'),body=$('#scriptPaneBody');
- wrap?.classList.toggle('scriptViewOn',state.open);
- btn?.classList.toggle('active',state.open);
- if(btn)btn.setAttribute('aria-pressed',state.open?'true':'false');
- if(state.open&&body)requestAnimationFrame(()=>{body.scrollTop=Number(state.scrollTop)||0});
+ state.open=!!runtime.scriptVisible;
+ state.scrollTop=Number(runtime.scriptScrollTop)||0;
  runtime.project.updatedAt=nowISO();
  db.putProject(runtime.project).catch(()=>{});
+}
+function toggleScriptReferenceView(){
+ if(!runtime.project||runtime.screen!=='editor')return;
+ runtime.scriptVisible=!runtime.scriptVisible;
+ const wrap=$('#projectPreviewWrap'),btn=$('#scriptViewBtn'),body=$('#scriptPaneBody');
+ wrap?.classList.toggle('scriptViewOn',runtime.scriptVisible);
+ btn?.classList.toggle('active',runtime.scriptVisible);
+ if(btn)btn.setAttribute('aria-pressed',runtime.scriptVisible?'true':'false');
+ if(runtime.scriptVisible&&body)requestAnimationFrame(()=>{body.scrollTop=runtime.scriptScrollTop||0});
+ persistScriptReferenceState();
  requestAnimationFrame(()=>{drawPreview();updateSelectionBox()});
 }
 function bindScriptReferenceScroll(){
  const body=$('#scriptPaneBody');
  if(!body||!runtime.project)return;
- const state=scriptReferenceState();
- requestAnimationFrame(()=>{body.scrollTop=Number(state.scrollTop)||0});
+ requestAnimationFrame(()=>{body.scrollTop=runtime.scriptScrollTop||0});
  let timer=null;
  body.addEventListener('scroll',()=>{
-  state.scrollTop=body.scrollTop;
+  runtime.scriptScrollTop=body.scrollTop;
   clearTimeout(timer);
-  timer=setTimeout(()=>{
-   if(!runtime.project)return;
-   runtime.project.updatedAt=nowISO();
-   db.putProject(runtime.project).catch(()=>{});
-  },180);
+  timer=setTimeout(persistScriptReferenceState,180);
  },{passive:true});
 }
 
