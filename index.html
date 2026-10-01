@@ -277,6 +277,28 @@ html,body{height:100%;overflow:hidden}.app{height:100dvh;overflow:hidden}.editor
 }
 </style>
 
+
+<style id="v1-script-reference-view">
+.scriptToggleBtn{min-width:58px;padding-left:8px!important;padding-right:8px!important;font-size:11px;white-space:nowrap}
+.scriptToggleBtn.active{border-color:#55e7ff;box-shadow:0 0 0 1px rgba(85,231,255,.18),0 0 14px rgba(85,231,255,.12)}
+.scriptPane{display:none;min-width:0;height:100%;border:1px solid #35295b;border-radius:14px;background:linear-gradient(180deg,#121024,#0d0b18);overflow:hidden}
+.scriptPaneHead{height:34px;display:flex;align-items:center;gap:6px;padding:0 9px;border-bottom:1px solid #35295b;font-size:11px;font-weight:900;flex:0 0 auto}
+.scriptPaneTitle{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scriptPaneBody{height:calc(100% - 34px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:10px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;font-size:11px;color:#f4efff;user-select:text}
+.scriptPaneEmpty{color:#aaa2bf}
+.previewWrap:not(.scriptViewOn) .scriptPane{display:none}
+.previewWrap.scriptViewOn{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);align-items:center;justify-items:center;gap:7px;width:100%}
+.previewWrap.scriptViewOn .stage{width:auto!important;height:100%!important;max-width:100%!important;max-height:100%!important;aspect-ratio:9/16!important;justify-self:center;align-self:center}
+.previewWrap.scriptViewOn .scriptPane{display:block;width:100%;height:100%;min-height:0;align-self:stretch}
+.previewWrap.scriptViewOn .projectLabel{left:8px;top:7px}
+.previewWrap.scriptViewOn .videoFitBtn{right:auto;left:calc(50% - 78px)}
+@media (max-width:759px){
+ .previewWrap.scriptViewOn{height:min(43dvh,430px)!important;padding:6px!important}
+ .previewWrap.scriptViewOn .scriptPaneBody{font-size:10px;padding:8px;line-height:1.58;height:calc(100% - 31px)}
+ .previewWrap.scriptViewOn .scriptPaneHead{height:31px;font-size:10px;padding:0 7px}
+}
+</style>
+
 </head><body>
 <div id="app"></div>
 <input id="fileVideo" type="file" accept="video/*,video/mp4,video/quicktime" hidden>
@@ -455,16 +477,52 @@ async function restoreMissingVideoTimelineMeta(v){
  renderTimeline();
  return true;
 }
-function renderEditor(){ensureRequiredPresetSe();ensureBgmVolumeDefaults();ensureSeVolumeDefaults();if(!runtime.selected)runtime.panel=null;Promise.allSettled([ASSETS.warning,ASSETS.identified,ASSETS.mission].map(loadImage));runtime.screen='editor';runtime.playing=false;$('#app').innerHTML=`<div class="app"><div class="topbar"><button class="iconbtn" id="homeBtn">⌂</button><div class="brand">SHURI SHORT STUDIO<small id="saveState">自動保存 ✓</small></div><div class="undoGroup"><button class="iconbtn" id="undoBtn">↶</button><button class="iconbtn" id="redoBtn">↷</button></div><button class="iconbtn previewSizeBtn" id="previewSizeBtn" title="プレビューサイズ">⛶</button><button class="iconbtn" id="previewBtn">👁</button></div><main class="editor"><div class="editorGrid"><section class="editorTop"><div class="previewWrap"><div class="projectLabel">PROJECT <span>9:16</span></div><div class="stage" id="stage"><video id="sourceVideo" playsinline preload="auto" src="${runtime.videoUrl||''}"></video><canvas id="previewCanvas" width="540" height="960"></canvas><div id="safeOverlay" class="safeOverlay"></div><div id="selectionBox" class="selectionBox hidden"></div></div><button class="videoFitBtn" id="videoFitBtn">表示：${runtime.project.video.fitMode==='cover'?'ぴったり':'全体'}</button></div><div class="transport"><button class="iconbtn" id="back3">↶3秒</button><button class="iconbtn" id="playBtn">▶</button><button class="btn small speed" id="speedBtn">1×</button><input class="scrub" id="scrub" type="range" min="0" max="${runtime.project.duration||1}" step="0.01" value="${runtime.project.playhead||0}"><span class="time" id="timeText">${fmt(runtime.project.playhead)}</span><button class="btn small guideSelect" id="guideBtn">UIなし</button></div></section><section><div class="timelineShell"><div class="timelineTop"><b>TIMELINE</b><span class="badge" id="zoomBadge">${runtime.pps}px/s</span><span class="timelineHelp">横スワイプで時間移動</span></div><div class="timelineBody"><div class="timelineViewport" id="timelineViewport"><div class="timeline" id="timeline"></div></div><div class="timelineCenterPlayhead" id="timelineCenterPlayhead"><span class="timelineCenterTime" id="timelineTime">${fmt(runtime.project.playhead||0)}</span></div></div></div><div class="panel" id="panel"></div></section></div></main><nav class="bottomNav" id="bottomNav">${['system','emotion','subtitle','bgm','material','plus'].map(x=>{const d={system:['⌁','SYSTEM'],emotion:['◆','感情'],subtitle:['T','字幕'],bgm:['♫','BGM'],material:['▣','素材'],plus:['＋','追加']}[x];return `<button data-panel="${x}" class="${runtime.panel===x?'active':''}"><span class="navIcon">${d[0]}</span><span class="navLabel">${d[1]}</span></button>`}).join('')}</nav><div class="contextBar hidden" id="contextBar"></div></div>`;
+function renderEditor(){ensureRequiredPresetSe();ensureBgmVolumeDefaults();ensureSeVolumeDefaults();if(!runtime.selected)runtime.panel=null;Promise.allSettled([ASSETS.warning,ASSETS.identified,ASSETS.mission].map(loadImage));runtime.screen='editor';runtime.playing=false;$('#app').innerHTML=`<div class="app"><div class="topbar"><button class="iconbtn" id="homeBtn">⌂</button><div class="brand">SHURI SHORT STUDIO<small id="saveState">自動保存 ✓</small></div><div class="undoGroup"><button class="iconbtn" id="undoBtn">↶</button><button class="iconbtn" id="redoBtn">↷</button></div><button class="iconbtn previewSizeBtn" id="previewSizeBtn" title="プレビューサイズ">⛶</button><button class="iconbtn scriptToggleBtn ${runtime.project.settings?.scriptView?.open?'active':''}" id="scriptViewBtn" title="台本を表示" aria-pressed="${runtime.project.settings?.scriptView?.open?'true':'false'}">📄 台本</button><button class="iconbtn" id="previewBtn">👁</button></div><main class="editor"><div class="editorGrid"><section class="editorTop"><div class="previewWrap ${runtime.project.settings?.scriptView?.open?'scriptViewOn':''}" id="projectPreviewWrap"><div class="projectLabel">PROJECT <span>9:16</span></div><div class="stage" id="stage"><video id="sourceVideo" playsinline preload="auto" src="${runtime.videoUrl||''}"></video><canvas id="previewCanvas" width="540" height="960"></canvas><div id="safeOverlay" class="safeOverlay"></div><div id="selectionBox" class="selectionBox hidden"></div></div><aside class="scriptPane" id="scriptPane" aria-label="台本参照"><div class="scriptPaneHead">📄 <span class="scriptPaneTitle">${escapeHtml(runtime.project.script?.title||'台本')}</span></div><div class="scriptPaneBody" id="scriptPaneBody">${runtime.project.script?.text?escapeHtml(runtime.project.script.text):'<span class="scriptPaneEmpty">このプロジェクトには台本がありません。</span>'}</div></aside><button class="videoFitBtn" id="videoFitBtn">表示：${runtime.project.video.fitMode==='cover'?'ぴったり':'全体'}</button></div><div class="transport"><button class="iconbtn" id="back3">↶3秒</button><button class="iconbtn" id="playBtn">▶</button><button class="btn small speed" id="speedBtn">1×</button><input class="scrub" id="scrub" type="range" min="0" max="${runtime.project.duration||1}" step="0.01" value="${runtime.project.playhead||0}"><span class="time" id="timeText">${fmt(runtime.project.playhead)}</span><button class="btn small guideSelect" id="guideBtn">UIなし</button></div></section><section><div class="timelineShell"><div class="timelineTop"><b>TIMELINE</b><span class="badge" id="zoomBadge">${runtime.pps}px/s</span><span class="timelineHelp">横スワイプで時間移動</span></div><div class="timelineBody"><div class="timelineViewport" id="timelineViewport"><div class="timeline" id="timeline"></div></div><div class="timelineCenterPlayhead" id="timelineCenterPlayhead"><span class="timelineCenterTime" id="timelineTime">${fmt(runtime.project.playhead||0)}</span></div></div></div><div class="panel" id="panel"></div></section></div></main><nav class="bottomNav" id="bottomNav">${['system','emotion','subtitle','bgm','material','plus'].map(x=>{const d={system:['⌁','SYSTEM'],emotion:['◆','感情'],subtitle:['T','字幕'],bgm:['♫','BGM'],material:['▣','素材'],plus:['＋','追加']}[x];return `<button data-panel="${x}" class="${runtime.panel===x?'active':''}"><span class="navIcon">${d[0]}</span><span class="navLabel">${d[1]}</span></button>`}).join('')}</nav><div class="contextBar hidden" id="contextBar"></div></div>`;
  const v=$('#sourceVideo');v.volume=runtime.project.video.volume??1;v.playbackRate=runtime.speed;
 let videoMetaRestored=false;
 const restoreMetaOnce=async()=>{if(videoMetaRestored)return;videoMetaRestored=true;await restoreMissingVideoTimelineMeta(v)};
 v.addEventListener('loadedmetadata',restoreMetaOnce,{once:true});
 if(v.readyState>=1)restoreMetaOnce();
 v.addEventListener('loadeddata',async()=>{await restoreMetaOnce();seek(runtime.project.playhead||0,false);drawPreview()});v.addEventListener('timeupdate',()=>{if(!runtime.playing)return;const clip=runtime.project.video.clips.find(c=>c.id===runtime._activeClip)||clipAtTimeline(runtime.project.playhead);runtime.project.playhead=clamp(timelineFromSource(v.currentTime,clip),0,runtime.project.duration);if(clip&&runtime.project.playhead>=clip.timelineEnd-.03){const idx=runtime.project.video.clips.findIndex(c=>c.id===clip.id),next=runtime.project.video.clips[idx+1];if(next){runtime._activeClip=next.id;v.currentTime=next.srcStart}else{v.pause();runtime.playing=false;$('#playBtn').textContent='▶'}}updateTransport();renderPlayhead();triggerAudioAt(runtime.project.playhead);drawPreview()});v.addEventListener('ended',()=>{runtime.playing=false;$('#playBtn').textContent='▶';pauseBgmForBackground()});v.addEventListener('play',()=>{if(runtime.screen==='editor'){runtime.playing=true;lastBgmKey='';syncBgmPreview(true)}});v.addEventListener('pause',()=>{if(document.hidden)pauseBgmForBackground()});v.addEventListener('error',()=>toast('動画を読み込めませんでした🥲',2600));
- $('#homeBtn').onclick=async()=>{await savePlayhead();renderHome()};$('#undoBtn').onclick=undo;$('#redoBtn').onclick=redo;$('#previewSizeBtn').onclick=togglePreviewSize;$('#previewBtn').onclick=showFinalPreview;$('#back3').onclick=()=>seek(Math.max(0,runtime.project.playhead-3));$('#playBtn').onclick=togglePlay;$('#speedBtn').onclick=()=>{runtime.speed=runtime.speed===1?.5:1;v.playbackRate=runtime.speed;$('#speedBtn').textContent=runtime.speed+'×'};$('#scrub').oninput=e=>seek(+e.target.value,false);$('#scrub').onchange=savePlayhead;$('#guideBtn').onclick=cycleGuide;$('#videoFitBtn').onclick=toggleVideoFit;$('#bottomNav').onclick=e=>{const b=e.target.closest('[data-panel]');if(!b)return;runtime.panel=b.dataset.panel;if(runtime.panel!=='plus')runtime.plusMode=null;renderPanel();$$('#bottomNav button').forEach(x=>x.classList.toggle('active',x.dataset.panel===runtime.panel))};
+ $('#homeBtn').onclick=async()=>{await savePlayhead();renderHome()};$('#undoBtn').onclick=undo;$('#redoBtn').onclick=redo;$('#previewSizeBtn').onclick=togglePreviewSize;$('#scriptViewBtn').onclick=toggleScriptReferenceView;bindScriptReferenceScroll();$('#previewBtn').onclick=showFinalPreview;$('#back3').onclick=()=>seek(Math.max(0,runtime.project.playhead-3));$('#playBtn').onclick=togglePlay;$('#speedBtn').onclick=()=>{runtime.speed=runtime.speed===1?.5:1;v.playbackRate=runtime.speed;$('#speedBtn').textContent=runtime.speed+'×'};$('#scrub').oninput=e=>seek(+e.target.value,false);$('#scrub').onchange=savePlayhead;$('#guideBtn').onclick=cycleGuide;$('#videoFitBtn').onclick=toggleVideoFit;$('#bottomNav').onclick=e=>{const b=e.target.closest('[data-panel]');if(!b)return;runtime.panel=b.dataset.panel;if(runtime.panel!=='plus')runtime.plusMode=null;renderPanel();$$('#bottomNav button').forEach(x=>x.classList.toggle('active',x.dataset.panel===runtime.panel))};
  bindStageGestures();syncStageTouchMode();renderEditorParts();startRenderLoop();
 }
+
+function scriptReferenceState(){
+ runtime.project.settings=runtime.project.settings||{};
+ runtime.project.settings.scriptView=runtime.project.settings.scriptView||{open:false,scrollTop:0};
+ return runtime.project.settings.scriptView;
+}
+function toggleScriptReferenceView(){
+ if(!runtime.project||runtime.screen!=='editor')return;
+ const state=scriptReferenceState();
+ state.open=!state.open;
+ const wrap=$('#projectPreviewWrap'),btn=$('#scriptViewBtn'),body=$('#scriptPaneBody');
+ wrap?.classList.toggle('scriptViewOn',state.open);
+ btn?.classList.toggle('active',state.open);
+ if(btn)btn.setAttribute('aria-pressed',state.open?'true':'false');
+ if(state.open&&body)requestAnimationFrame(()=>{body.scrollTop=Number(state.scrollTop)||0});
+ runtime.project.updatedAt=nowISO();
+ db.putProject(runtime.project).catch(()=>{});
+ requestAnimationFrame(()=>{drawPreview();updateSelectionBox()});
+}
+function bindScriptReferenceScroll(){
+ const body=$('#scriptPaneBody');
+ if(!body||!runtime.project)return;
+ const state=scriptReferenceState();
+ requestAnimationFrame(()=>{body.scrollTop=Number(state.scrollTop)||0});
+ let timer=null;
+ body.addEventListener('scroll',()=>{
+  state.scrollTop=body.scrollTop;
+  clearTimeout(timer);
+  timer=setTimeout(()=>{
+   if(!runtime.project)return;
+   runtime.project.updatedAt=nowISO();
+   db.putProject(runtime.project).catch(()=>{});
+  },180);
+ },{passive:true});
+}
+
 function togglePreviewSize(){const app=$('.app');if(!app)return;const on=app.classList.toggle('previewLarge');runtime.previewLarge=on;$('#previewSizeBtn').textContent=on?'↙':'⛶';setTimeout(()=>{drawPreview();updateSelectionBox()},40)}
 async function toggleVideoFit(){const cur=runtime.project.video.fitMode||'contain';runtime.project.video.fitMode=cur==='cover'?'contain':'cover';const b=$('#videoFitBtn');if(b)b.textContent='表示：'+(runtime.project.video.fitMode==='cover'?'ぴったり':'全体');await commit('動画表示フィット変更');drawPreview()}
 function renderEditorParts(){hideMoveTime();renderTimeline();renderPanel();renderContext();updateGuide();drawPreview();updateTransport()}
