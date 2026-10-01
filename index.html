@@ -309,6 +309,7 @@ html,body{height:100%;overflow:hidden}.app{height:100dvh;overflow:hidden}.editor
 .timelineShell,.panel,.bottomNav,.contextBar{pointer-events:auto}
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.min.js"></script>
 </head><body>
 <div id="app"></div>
 <input id="fileVideo" type="file" accept="video/*,video/mp4,video/quicktime" hidden>
@@ -675,7 +676,7 @@ async function drawSystemLayer(ctx,w,h,t){
  }
 }
 async function drawMaterials(ctx,w,h,t){const mats=runtime.project.materials.filter(m=>visibleAt(m,t)).sort((a,b)=>(a.z||10)-(b.z||10));for(const m of mats){const src=await materialSrc(m);if(!src)continue;try{let media;if(m.type==='video'){media=await getMaterialVideo(m,src,t);if(!media||media.readyState<2)continue}else media=await loadImage(src);const mw=media.videoWidth||media.width,mh=media.videoHeight||media.height;if(!mw||!mh)continue;const base=Math.min(w,h)*(m.scale||.3),ar=mw/mh;let dw=base,dh=base/ar;if(ar<1){dh=base;dw=base*ar}const x=(m.x??.5)*w,y=(m.y??.5)*h;ctx.save();let alpha=m.opacity??1;const lp=(t-m.start)/Math.max(.01,m.end-m.start),rem=(m.end-t)/Math.max(.01,m.end-m.start);if(m.in==='フェード')alpha*=clamp(lp/.18,0,1);if(m.out==='フェード')alpha*=clamp(rem/.18,0,1);ctx.globalAlpha=alpha;ctx.translate(x,y);if(m.in==='ポン'&&lp<.18){const q=clamp(lp/.18,0,1);ctx.scale(.65+.35*q,.65+.35*q)}if(m.out==='縮小'&&rem<.18){const q=clamp(rem/.18,0,1);ctx.scale(.65+.35*q,.65+.35*q)}ctx.rotate((m.rotation||0)*Math.PI/180);applyMaterialMotion(ctx,m,t,w,h);ctx.drawImage(media,-dw/2,-dh/2,dw,dh);ctx.restore()}catch{}}}
-async function getMaterialVideo(m,src,t){let v=runtime.mediaCache.get(m.id);if(!v){v=document.createElement('video');v.src=src;v.playsInline=true;v.muted=true;v.preload='auto';runtime.mediaCache.set(m.id,v);await new Promise(res=>{if(v.readyState>=1)res();else{v.onloadedmetadata=()=>res();v.onerror=()=>res()}})}const original=m.sourceDuration||v.duration||Math.max(.1,m.end-m.start),local=Math.max(0,t-m.start);const target=(local%original);if(Number.isFinite(target)&&Math.abs((v.currentTime||0)-target)>.08){try{v.currentTime=target}catch{}}return v}
+async function getMaterialVideo(m,src,t){let v=runtime.mediaCache.get(m.id);if(!v){v=document.createElement('video');v.src=src;v.playsInline=true;v.muted=true;v.preload='auto';runtime.mediaCache.set(m.id,v);await new Promise(res=>{if(v.readyState>=1)res();else{v.onloadedmetadata=()=>res();v.onerror=()=>res()}})}const original=m.sourceDuration||v.duration||Math.max(.1,m.end-m.start),local=Math.max(0,t-m.start);const target=(local%original);if(Number.isFinite(target)&&Math.abs((v.currentTime||0)-target)>.08){try{if(runtime.exporting)await seekExportVideoFrame(v,target);else v.currentTime=target}catch{}}return v}
 function applyMaterialMotion(ctx,m,t,w,h){const p=(t-m.start)/Math.max(.01,m.end-m.start),str=m.motionStrength==='強'?1.7:m.motionStrength==='弱'?.55:1;if(m.motion==='ふるふる')ctx.rotate(Math.sin(p*35)*.025*str);if(m.motion==='ゆらゆら')ctx.rotate(Math.sin(p*7)*.06*str);if(m.motion==='ぴょこぴょこ')ctx.translate(0,-Math.abs(Math.sin(p*12))*h*.015*str);if(m.motion==='ぷるん')ctx.scale(1+Math.sin(p*18)*.035*str,1-Math.sin(p*18)*.025*str);if(m.motion==='ぐるっ')ctx.rotate(p*Math.PI*2*str);if(m.motion==='ズーム')ctx.scale(1+p*.12*str,1+p*.12*str);if(m.motion==='ドン！'&&p<.22){const q=p/.22,s=.72+.28*Math.min(1,q*1.6);ctx.scale(s,s)}}
 function drawSubtitles(ctx,w,h,t){const ss=runtime.project.subtitles.filter(s=>visibleAt(s,t)).sort((a,b)=>(a.z||30)-(b.z||30));for(const s of ss){ctx.save();const style=s.style||'普通',size=w*(style==='叫び'?.075:style==='強調'?.065:style==='小声'?.043:.052)*(s.scale||1);ctx.font=`900 ${size}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=Math.max(4,size*.12);ctx.strokeStyle='#000';ctx.fillStyle=style==='叫び'?'#ffeb62':style==='小声'?'#e7e3ef':'#fff';const x=(s.x??.5)*w,y=(s.y??.70)*h;const lines=splitText(ctx,s.text||'',w*.76,2);lines.forEach((line,i)=>{const yy=y+(i-(lines.length-1)/2)*size*1.15;ctx.strokeText(line,x,yy);ctx.fillText(line,x,yy)});ctx.restore()}}
 function drawEffects(ctx,w,h,t){const all=[...runtime.project.effects.filter(e=>visibleAt(e,t))];for(const parent of [...runtime.project.systemEvents,...runtime.project.emotionSets].filter(e=>visibleAt(e,t))){for(const ch of parent.children||[]){if(ch.kind==='fx'&&ch.enabled!==false)all.push({...ch,start:parent.start+(ch.offset||0),end:parent.start+(ch.offset||0)+(ch.duration||.3)})}}const byType={};all.forEach(e=>{if(!byType[e.type]||strengthNum(e.strength)>strengthNum(byType[e.type].strength))byType[e.type]=e});for(const e of Object.values(byType)){const p=clamp((t-e.start)/Math.max(.01,e.end-e.start),0,1),s=strengthNum(e.strength);ctx.save();if(e.type==='flash'){ctx.fillStyle=`rgba(255,255,255,${Math.sin(Math.PI*p)*.65*s})`;ctx.fillRect(0,0,w,h)}if(e.type==='dark'){ctx.fillStyle=`rgba(0,0,0,${.18+.28*s})`;ctx.fillRect(0,0,w,h)}if(e.type==='glitch'){for(let i=0;i<5;i++){ctx.fillStyle=i%2?'#ff42ca55':'#4ce8ff55';ctx.fillRect(Math.random()*w,Math.random()*h,w*(.08+Math.random()*.22),2+Math.random()*6)}}if(e.type==='sparkle'){ctx.fillStyle='#fff';for(let i=0;i<12;i++){const a=i*2.4+t*3,r=(.1+.35*((i*17)%10)/10)*w;ctx.globalAlpha=.5+.5*Math.sin(t*6+i);ctx.fillRect(w/2+Math.cos(a)*r,h/2+Math.sin(a)*r,3*s,3*s)}}if(e.type==='speed'){ctx.strokeStyle='#fff8';ctx.lineWidth=2;for(let i=0;i<16;i++){const a=i*Math.PI*2/16;ctx.beginPath();ctx.moveTo(w/2+Math.cos(a)*w*.25,h/2+Math.sin(a)*h*.16);ctx.lineTo(w/2+Math.cos(a)*w*.48,h/2+Math.sin(a)*h*.34);ctx.stroke()}}ctx.restore()}}
@@ -884,14 +885,228 @@ const _togglePlay=togglePlay;togglePlay=function(){const v=$('#sourceVideo');if(
 function exportResearch(){const p=runtime.project,systems=p.systemEvents.map(x=>({time:+x.start.toFixed(2),type:x.type,text:x.text||'',hp:x.type==='HP'?{delta:x.hpDelta,set:x.hpSet}:undefined,missionId:x.missionId||undefined})),emotions=p.emotionSets.map(x=>({time:+x.start.toFixed(2),name:x.name})),bgm=p.bgmIntervals.map(x=>({start:+x.start.toFixed(2),end:+Math.min(x.end,p.duration).toFixed(2),key:x.key,volume:bgmBaseVolume(x),sourceStart:x.sourceStart||0})),ses=p.soundEffects.map(x=>({time:+x.start.toFixed(2),key:x.key,label:SE[x.key]?.label||x.key})),mats=p.materials.map(x=>({name:x.name,start:+x.start.toFixed(2),end:+x.end.toFixed(2),motion:x.motion})),fx=p.effects.map(x=>({type:x.type,start:+x.start.toFixed(2),end:+x.end.toFixed(2),strength:x.strength}));const first=[...p.systemEvents,...p.emotionSets,...p.effects,...p.soundEffects].map(x=>x.start).sort((a,b)=>a-b)[0]??null;const final={projectId:p.id,title:p.title,appVersion:APP_VERSION,exportedAt:nowISO(),script:{source:p.script.source,title:p.script.title,text:p.script.text},completedVideo:{duration:+p.duration.toFixed(2),cutCount:Math.max(0,p.video.clips.length-1),firstEffectSec:first,systems,emotions,bgm,bgmSwitchCount:Math.max(0,bgm.length-1),soundEffects:ses,zoomCount:fx.filter(x=>x.type==='zoom').length,silenceSec:+bgm.filter(x=>x.key==='無音').reduce((a,x)=>a+(x.end-x.start),0).toFixed(2),subtitleCount:p.subtitles.length,subtitleChars:p.subtitles.reduce((a,x)=>a+(x.text?.length||0),0),materials:mats,effects:fx,endTiming:p.duration},process:{editingStartedAt:p.research.startedAt,editingMs:p.research.editingMs||0,undoCount:p.research.undoCount||0,redoCount:p.research.redoCount||0,modifications:p.research.modifications||0},note:'評価ではなく事実ログ。投稿結果と組み合わせて比較研究する。'};return final}
 function researchText(r){return `SHURI SHORT STUDIO｜RESEARCH\n${r.title}\n書き出し: ${new Date(r.exportedAt).toLocaleString('ja-JP')}\n\n【完成動画】\n動画尺: ${r.completedVideo.duration}s\nカット数: ${r.completedVideo.cutCount}\n最初の演出: ${r.completedVideo.firstEffectSec==null?'なし':r.completedVideo.firstEffectSec+'s'}\nSYSTEM: ${r.completedVideo.systems.map(x=>`${x.type}@${x.time}s`).join(' / ')||'なし'}\n感情セット: ${r.completedVideo.emotions.map(x=>`${x.name}@${x.time}s`).join(' / ')||'なし'}\nBGM: ${r.completedVideo.bgm.map(x=>`${x.key} ${x.start}-${x.end}s`).join(' / ')}\nSE: ${r.completedVideo.soundEffects.map(x=>`${x.label}@${x.time}s`).join(' / ')||'なし'}\n字幕: ${r.completedVideo.subtitleCount}個 / ${r.completedVideo.subtitleChars}文字\n素材: ${r.completedVideo.materials.map(x=>x.name).join(' / ')||'なし'}\nFX: ${r.completedVideo.effects.map(x=>x.type).join(' / ')||'なし'}\n無音: ${r.completedVideo.silenceSec}s\n\n【制作プロセス】\nUndo: ${r.process.undoCount}\nRedo: ${r.process.redoCount}\n修正操作: ${r.process.modifications}\n\n${r.note}`}
 function showExport(){const m=modal('SHURI SHORT 書き出し',`<div class="checkItem"><b>1080 × 1920</b><div class="meta">SHURI SHORT preset</div></div><div class="formRow"><label>FPS</label><select id="exportFps" class="field"><option value="30">30 fps</option><option value="60">60 fps</option></select></div><div class="exportProgress"><i id="expBar"></i></div><div id="expStatus" class="notice" style="margin-top:8px">🎬 VIDEO 待機<br>🔬 RESEARCH 待機</div>`,[{label:'編集に戻る'},{label:'書き出す',primary:true,onClick:async back=>{const fps=+$('#exportFps',back).value;await doExport(fps,back);return false}}]);}
-async function doExport(fps,modalEl){if(runtime.exporting)return;runtime.exporting=true;stopPlayback();stopAudio();const status=$('#expStatus',modalEl),bar=$('#expBar',modalEl);status.innerHTML='🎬 VIDEO 準備中…<br>🔬 RESEARCH 準備中…';let videoResult=null,researchResult=null,videoErr=null,researchErr=null;try{videoResult=await exportVideo(fps,p=>{bar.style.width=(p*92)+'%';status.innerHTML=`🎬 VIDEO ${Math.round(p*100)}%<br>🔬 RESEARCH 待機`})}catch(e){videoErr=e;console.error(e)}try{const r=exportResearch(),txt=researchText(r),json=JSON.stringify(r,null,2);researchResult={r,txt,json};bar.style.width='100%'}catch(e){researchErr=e}runtime.exporting=false;const okV=!!videoResult,okR=!!researchResult;status.innerHTML=`🎬 VIDEO ${okV?'✓':'✕'}${videoErr?'<br><span class="missing">'+escapeHtml(humanExportError(videoErr))+'</span>':''}<br>🔬 RESEARCH ${okR?'✓':'✕'}`;if(okV||okR){runtime.project.exports.push({id:uid('export'),at:nowISO(),videoOk:okV,researchOk:okR,fps,videoName:videoResult?.name||null});runtime.project.lastExport={videoOk:okV,researchOk:okR,at:nowISO()};runtime.project.status=okV&&okR?'完了':'書き出し未完了';await db.putProject(runtime.project);showExportResults(videoResult,researchResult,okV&&okR,modalEl)}else{status.innerHTML+='\n書き出しできませんでした🥲'}}
+async function doExport(fps,modalEl){if(runtime.exporting)return;runtime.exporting=true;stopPlayback();stopAudio();const status=$('#expStatus',modalEl),bar=$('#expBar',modalEl);status.innerHTML='🎬 VIDEO 準備中…<br>🔬 RESEARCH 準備中…';let videoResult=null,researchResult=null,videoErr=null,researchErr=null;try{videoResult=await exportVideo(fps,p=>{bar.style.width=(p*92)+'%';status.innerHTML=`🎬 VIDEO ${Math.round(p*100)}%<br>🔬 RESEARCH 待機`})}catch(e){videoErr=e;console.error(e)}try{const r=exportResearch(),txt=researchText(r),json=JSON.stringify(r,null,2);researchResult={r,txt,json};bar.style.width='100%'}catch(e){researchErr=e}runtime.exporting=false;const okV=!!videoResult,okR=!!researchResult;status.innerHTML=`🎬 VIDEO ${okV?'✓':'✕'}${videoErr?'<br><span class="missing">'+escapeHtml(humanExportError(videoErr))+'</span>':''}<br>🔬 RESEARCH ${okR?'✓':'✕'}`;if(okV||okR){runtime.project.exports.push({id:uid('export'),at:nowISO(),videoOk:okV,researchOk:okR,fps,videoName:videoResult?.name||null,verify:videoResult?.verify||null});runtime.project.lastExport={videoOk:okV,researchOk:okR,at:nowISO()};runtime.project.status=okV&&okR?'完了':'書き出し未完了';await db.putProject(runtime.project);showExportResults(videoResult,researchResult,okV&&okR,modalEl)}else{status.innerHTML+='\n書き出しできませんでした🥲'}}
 function humanExportError(e){const s=String(e?.message||e);if(/quota|space|storage/i.test(s))return '保存容量が足りない可能性があります。';if(/MediaRecorder|mime/i.test(s))return 'このブラウザの動画エンコーダに対応していません。';return '動画を書き出せませんでした。編集内容は保存されています。'}
-async function exportVideo(fps,onProgress){if(!runtime.videoBlob)throw new Error('video missing');const ec=document.createElement('canvas');ec.width=1080;ec.height=1920;ec.style.cssText='position:fixed;left:-2px;bottom:-2px;width:1px;height:1px;opacity:.001;pointer-events:none';document.body.append(ec);const ex=ec.getContext('2d',{alpha:false});const ev=document.createElement('video');ev.playsInline=true;ev.muted=false;ev.preload='auto';ev.src=runtime.videoUrl;ev.style.display='none';document.body.append(ev);await new Promise((res,rej)=>{ev.onloadeddata=res;ev.onerror=()=>rej(new Error('video load failed'))});
- const ac=new (window.AudioContext||window.webkitAudioContext)(),dest=ac.createMediaStreamDestination(),mix=ac.createGain();mix.connect(dest);let videoSource=null;try{videoSource=ac.createMediaElementSource(ev);const vg=ac.createGain();vg.gain.value=runtime.project.video.volume??1;videoSource.connect(vg).connect(mix)}catch(e){console.warn('video audio source',e)}
- const stream=ec.captureStream(fps),vt=stream.getVideoTracks()[0];dest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));const mime=['video/mp4;codecs=h264,aac','video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(x=>MediaRecorder.isTypeSupported(x));if(!mime)throw new Error('MediaRecorder mime unsupported');const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:8_000_000,audioBitsPerSecond:192_000}),chunks=[];rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};const done=new Promise((res,rej)=>{rec.onstop=res;rec.onerror=e=>rej(e.error||new Error('recorder error'))});
- const buffers=await preloadExportAudio();const baseAt=ac.currentTime+.18;scheduleExportAudio(ac,mix,buffers,baseAt);rec.start(1000);let startPerf=performance.now(),lastClipId=null;ev.currentTime=sourceTimeAt(0);await ev.play().catch(()=>{});let stopped=false;await new Promise((resolve,reject)=>{const step=async()=>{try{const tl=(performance.now()-startPerf)/1000;if(tl>=runtime.project.duration){resolve();return}const clip=clipAtTimeline(tl);if(clip){const target=clip.srcStart+(tl-clip.timelineStart);if(lastClipId!==clip.id||Math.abs(ev.currentTime-target)>.16){ev.currentTime=target;lastClipId=clip.id;if(ev.paused)await ev.play().catch(()=>{})}}await drawPreview(ex,1080,1920,tl,ev);vt.requestFrame?.();onProgress?.(tl/runtime.project.duration);requestAnimationFrame(step)}catch(e){reject(e)}};requestAnimationFrame(step)});ev.pause();rec.stop();await done;await ac.close().catch(()=>{});ec.remove();ev.remove();const ext=mime.includes('mp4')?'mp4':'webm',blob=new Blob(chunks,{type:mime}),name=`${runtime.project.title.replace(/[^\w\u3000-\u9fffぁ-んァ-ヶー-]+/g,'_')}_SHURI_SHORT.${ext}`;if(blob.size<10000)throw new Error('export blob too small');return {blob,name,mime}}
-async function preloadExportAudio(){const keys=new Set(runtime.project.soundEffects.map(x=>x.key));for(const p of [...runtime.project.systemEvents,...runtime.project.emotionSets])for(const ch of p.children||[])if(ch.kind==='se'&&ch.enabled!==false)keys.add(ch.key);const out={se:{},bgm:{},material:{}};for(const k of keys){try{out.se[k]=await getAudioBuffer(SE[k].url)}catch{}}for(const b of runtime.project.bgmIntervals){if(b.key==='無音'||out.bgm[b.key])continue;const builtin=BGM_DATA[b.key];const meta=runtime.project.bgmAssets?.[b.key];try{if(builtin)out.bgm[b.key]=await getAudioBuffer(builtin);else if(meta)out.bgm[b.key]=await getAudioBuffer(meta.blobKey,true);else throw new Error('missing BGM')}catch{toast(`⚠ ${b.key} BGMを読み込めませんでした`,2200)}}for(const m of runtime.project.materials){if(m.type==='video'&&(m.audioVolume||0)>0&&m.blobKey)try{out.material[m.id]=await getAudioBuffer(m.blobKey,true)}catch{}}return out}
-function scheduleExportAudio(ac,mix,buffers,base){const bgmBus=ac.createGain();bgmBus.gain.value=1;bgmBus.connect(mix);const schedule=(buf,time,vol,dur=null,offset=0,target=mix)=>{if(!buf)return;const s=ac.createBufferSource(),g=ac.createGain();s.buffer=buf;g.gain.value=vol;s.connect(g).connect(target);try{s.start(base+Math.max(0,time),offset);if(dur)s.stop(base+time+dur)}catch{}};for(const e of runtime.project.soundEffects)schedule(buffers.se[e.key],e.start,seBaseVolume(e));for(const p of [...runtime.project.systemEvents,...runtime.project.emotionSets])for(const ch of p.children||[])if(ch.kind==='se'&&ch.enabled!==false)schedule(buffers.se[ch.key],p.start+(ch.offset||0),seBaseVolume(ch));for(const b of runtime.project.bgmIntervals){if(b.key==='無音')continue;const buf=buffers.bgm[b.key];if(!buf)continue;const len=Math.min(b.end,runtime.project.duration)-b.start;if(len<=0)continue;let remain=len,pos=0,off=(b.sourceStart||0)%buf.duration;while(remain>0){const part=Math.min(remain,buf.duration-off);schedule(buf,b.start+pos,bgmBaseVolume(b),part,off,bgmBus);remain-=part;pos+=part;off=0}}for(const w of bgmDuckWindows()){const st=base+w.start,en=base+w.end,amount=w.amount;bgmBus.gain.setValueAtTime(1,Math.max(ac.currentTime,st-.06));bgmBus.gain.linearRampToValueAtTime(amount,st+.06);bgmBus.gain.setValueAtTime(amount,Math.max(st+.06,en-.10));bgmBus.gain.linearRampToValueAtTime(1,en)}for(const m of runtime.project.materials){const buf=buffers.material[m.id];if(!buf||(m.audioVolume||0)<=0)continue;let remain=m.end-m.start,pos=0,off=0;while(remain>0){const part=Math.min(remain,buf.duration-off);schedule(buf,m.start+pos,m.audioVolume,part,off,mix);remain-=part;pos+=part;off=0}}}
+
+const EXPORT_WIDTH=1080,EXPORT_HEIGHT=1920,EXPORT_AUDIO_RATE=48000,EXPORT_AUDIO_CHANNELS=2;
+
+async function waitExportVideoReady(v){
+ if(v.readyState>=2&&Number.isFinite(v.duration))return;
+ await new Promise((res,rej)=>{
+  const ok=()=>{cleanup();res()},bad=()=>{cleanup();rej(new Error('video load failed'))};
+  const cleanup=()=>{v.removeEventListener('loadeddata',ok);v.removeEventListener('error',bad)};
+  v.addEventListener('loadeddata',ok,{once:true});v.addEventListener('error',bad,{once:true});
+ });
+}
+async function seekExportVideoFrame(v,target){
+ target=clamp(target,0,Math.max(0,(v.duration||0)-.0001));
+ const needSeek=Math.abs((v.currentTime||0)-target)>.001;
+ if(needSeek){
+  await new Promise((res,rej)=>{
+   let done=false,timer;
+   const finish=()=>{if(done)return;done=true;clearTimeout(timer);v.removeEventListener('seeked',finish);v.removeEventListener('error',fail);res()};
+   const fail=()=>{if(done)return;done=true;clearTimeout(timer);v.removeEventListener('seeked',finish);v.removeEventListener('error',fail);rej(new Error('video seek failed'))};
+   v.addEventListener('seeked',finish,{once:true});v.addEventListener('error',fail,{once:true});
+   timer=setTimeout(finish,1800);
+   try{v.currentTime=target}catch(e){fail()}
+  });
+ }
+ if('requestVideoFrameCallback'in v){
+  await new Promise(res=>{
+   let done=false,timer=setTimeout(()=>{if(!done){done=true;res()}},240);
+   try{v.requestVideoFrameCallback((_,meta)=>{if(done)return;done=true;clearTimeout(timer);res(meta)})}catch{clearTimeout(timer);res()}
+  });
+ }else await new Promise(res=>requestAnimationFrame(()=>requestAnimationFrame(res)));
+ return v.currentTime;
+}
+async function chooseExportVideoConfig(fps){
+ if(typeof VideoEncoder==='undefined')throw new Error('WebCodecs VideoEncoder unsupported');
+ const candidates=['avc1.64002A','avc1.4D402A','avc1.42002A'];
+ for(const codec of candidates){
+  const cfg={codec,width:EXPORT_WIDTH,height:EXPORT_HEIGHT,bitrate:12_000_000,framerate:fps,hardwareAcceleration:'prefer-hardware',latencyMode:'quality',avc:{format:'avc'}};
+  try{const s=await VideoEncoder.isConfigSupported(cfg);if(s.supported)return s.config}catch{}
+ }
+ throw new Error('1080x1920 H264 encoder unsupported');
+}
+async function chooseExportAudioConfig(){
+ if(typeof AudioEncoder==='undefined'||typeof AudioData==='undefined')throw new Error('WebCodecs AudioEncoder unsupported');
+ const cfg={codec:'mp4a.40.2',sampleRate:EXPORT_AUDIO_RATE,numberOfChannels:EXPORT_AUDIO_CHANNELS,bitrate:192_000};
+ const s=await AudioEncoder.isConfigSupported(cfg);
+ if(!s.supported)throw new Error('AAC encoder unsupported');
+ return s.config;
+}
+async function preloadExportAudio(){
+ const keys=new Set(runtime.project.soundEffects.map(x=>x.key));
+ for(const p of [...runtime.project.systemEvents,...runtime.project.emotionSets])for(const ch of p.children||[])if(ch.kind==='se'&&ch.enabled!==false)keys.add(ch.key);
+ const out={main:null,se:{},bgm:{},material:{}};
+ try{
+  const decodeCtx=new (window.AudioContext||window.webkitAudioContext)({sampleRate:EXPORT_AUDIO_RATE});
+  out.main=await decodeCtx.decodeAudioData((await runtime.videoBlob.arrayBuffer()).slice(0));
+  await decodeCtx.close().catch(()=>{});
+ }catch(e){throw new Error('main video audio decode failed: '+(e?.message||e))}
+ for(const k of keys){try{out.se[k]=await getAudioBuffer(SE[k].url)}catch{}}
+ for(const b of runtime.project.bgmIntervals){
+  if(b.key==='無音'||out.bgm[b.key])continue;
+  const builtin=BGM_DATA[b.key],meta=runtime.project.bgmAssets?.[b.key];
+  try{
+   if(builtin)out.bgm[b.key]=await getAudioBuffer(builtin);
+   else if(meta)out.bgm[b.key]=await getAudioBuffer(meta.blobKey,true);
+   else throw new Error('missing BGM');
+  }catch{toast(`⚠ ${b.key} BGMを読み込めませんでした`,2200)}
+ }
+ for(const m of runtime.project.materials)if(m.type==='video'&&(m.audioVolume||0)>0&&m.blobKey)try{out.material[m.id]=await getAudioBuffer(m.blobKey,true)}catch{}
+ return out;
+}
+async function renderExportAudioMix(buffers){
+ const duration=Math.max(.001,runtime.project.duration||0),frames=Math.ceil(duration*EXPORT_AUDIO_RATE);
+ const ac=new OfflineAudioContext(EXPORT_AUDIO_CHANNELS,frames,EXPORT_AUDIO_RATE),mix=ac.createGain();mix.gain.value=1;mix.connect(ac.destination);
+ const schedule=(buf,time,vol,dur=null,offset=0,target=mix)=>{
+  if(!buf||!(vol>0))return;
+  const when=Math.max(0,time),off=Math.max(0,offset||0);
+  if(off>=buf.duration)return;
+  let useDur=dur==null?buf.duration-off:Math.min(Math.max(0,dur),buf.duration-off,duration-when);
+  if(!(useDur>0))return;
+  const s=ac.createBufferSource(),g=ac.createGain();s.buffer=buf;g.gain.value=vol;s.connect(g).connect(target);
+  try{s.start(when,off,useDur)}catch{}
+ };
+ // MAIN VIDEO AUDIO: timeline clips and their existing clip/global volume.
+ for(const c of runtime.project.video.clips||[]){
+  const st=Math.max(0,c.timelineStart||0),en=Math.min(duration,c.timelineEnd||duration),len=en-st;
+  if(len<=0)continue;
+  const vol=clamp(c.volume??runtime.project.video.volume??1,0,1.5);
+  schedule(buffers.main,st,vol,len,c.srcStart||0,mix);
+ }
+ // BGM: same interval volume and duck rules used by Editor.
+ const bgmBus=ac.createGain();bgmBus.gain.value=1;bgmBus.connect(mix);
+ for(const b of runtime.project.bgmIntervals){
+  if(b.key==='無音')continue;
+  const buf=buffers.bgm[b.key];if(!buf)continue;
+  const len=Math.min(b.end,duration)-b.start;if(len<=0)continue;
+  let remain=len,pos=0,off=(b.sourceStart||0)%buf.duration;
+  while(remain>0){
+   const part=Math.min(remain,buf.duration-off);
+   schedule(buf,b.start+pos,bgmBaseVolume(b),part,off,bgmBus);
+   remain-=part;pos+=part;off=0;
+  }
+ }
+ const ducks=[...bgmDuckWindows()].sort((a,b)=>a.start-b.start);
+ for(const w of ducks){
+  const st=Math.max(0,w.start),en=Math.min(duration,w.end),amount=w.amount;
+  if(en<=st)continue;
+  const a=Math.max(0,st-.06),b=Math.min(duration,st+.06),c=Math.max(b,en-.10);
+  try{
+   bgmBus.gain.setValueAtTime(1,a);
+   bgmBus.gain.linearRampToValueAtTime(amount,b);
+   bgmBus.gain.setValueAtTime(amount,c);
+   bgmBus.gain.linearRampToValueAtTime(1,en);
+  }catch{}
+ }
+ // SE
+ for(const e of runtime.project.soundEffects)schedule(buffers.se[e.key],e.start,seBaseVolume(e));
+ for(const p of [...runtime.project.systemEvents,...runtime.project.emotionSets])for(const ch of p.children||[])if(ch.kind==='se'&&ch.enabled!==false)schedule(buffers.se[ch.key],p.start+(ch.offset||0),seBaseVolume(ch));
+ // Material VIDEO audio
+ for(const m of runtime.project.materials){
+  const buf=buffers.material[m.id];if(!buf||(m.audioVolume||0)<=0)continue;
+  let remain=Math.min(duration,m.end)-m.start,pos=0,off=0;
+  while(remain>0){const part=Math.min(remain,buf.duration-off);schedule(buf,m.start+pos,m.audioVolume,part,off,mix);remain-=part;pos+=part;off=0}
+ }
+ return ac.startRendering();
+}
+async function encodeExportAudio(audioBuffer,audioEncoder){
+ const channels=EXPORT_AUDIO_CHANNELS,sr=EXPORT_AUDIO_RATE,chunkFrames=1024,total=audioBuffer.length;
+ for(let start=0;start<total;start+=chunkFrames){
+  const count=Math.min(chunkFrames,total-start),data=new Float32Array(count*channels);
+  for(let ch=0;ch<channels;ch++)data.set(audioBuffer.getChannelData(Math.min(ch,audioBuffer.numberOfChannels-1)).subarray(start,start+count),ch*count);
+  const ad=new AudioData({format:'f32-planar',sampleRate:sr,numberOfFrames:count,numberOfChannels:channels,timestamp:Math.round(start/sr*1e6),data});
+  audioEncoder.encode(ad);ad.close();
+  if(audioEncoder.encodeQueueSize>12)await new Promise(res=>setTimeout(res,0));
+ }
+ await audioEncoder.flush();
+}
+async function verifyExportMp4(blob,expectedDuration,fps,encodedFrames){
+ const u=URL.createObjectURL(blob),v=document.createElement('video');v.preload='metadata';v.playsInline=true;v.src=u;
+ try{
+  await new Promise((res,rej)=>{v.onloadedmetadata=res;v.onerror=()=>rej(new Error('export verify video metadata failed'))});
+  if(v.videoWidth!==EXPORT_WIDTH||v.videoHeight!==EXPORT_HEIGHT)throw new Error(`export resolution mismatch ${v.videoWidth}x${v.videoHeight}`);
+  if(Math.abs(v.duration-expectedDuration)>.35)throw new Error(`export duration mismatch ${v.duration.toFixed(2)}s`);
+  const expectedFrames=Math.ceil(expectedDuration*fps);
+  if(Math.abs(encodedFrames-expectedFrames)>1)throw new Error(`export frame count mismatch ${encodedFrames}/${expectedFrames}`);
+  // Final MP4 itself must contain decodable audio, not merely an audio-looking track.
+  const ac=new (window.AudioContext||window.webkitAudioContext)({sampleRate:EXPORT_AUDIO_RATE});
+  let ab;
+  try{ab=await ac.decodeAudioData((await blob.arrayBuffer()).slice(0))}finally{await ac.close().catch(()=>{})}
+  if(!ab||ab.duration<Math.max(.1,expectedDuration-.4))throw new Error('export audio track missing');
+  return {width:v.videoWidth,height:v.videoHeight,duration:v.duration,fps,frames:encodedFrames,audioDuration:ab.duration};
+ }finally{URL.revokeObjectURL(u);v.remove()}
+}
+async function exportVideo(fps,onProgress){
+ if(!runtime.videoBlob)throw new Error('video missing');
+ if(!globalThis.Mp4Muxer?.Muxer)throw new Error('MP4 muxer unavailable');
+ fps=Number(fps)||30;
+ const videoCfg=await chooseExportVideoConfig(fps),audioCfg=await chooseExportAudioConfig();
+ const buffers=await preloadExportAudio(),mixedAudio=await renderExportAudioMix(buffers);
+ const target=new Mp4Muxer.ArrayBufferTarget();
+ const muxer=new Mp4Muxer.Muxer({
+  target,
+  video:{codec:'avc',width:EXPORT_WIDTH,height:EXPORT_HEIGHT,frameRate:fps},
+  audio:{codec:'aac',numberOfChannels:EXPORT_AUDIO_CHANNELS,sampleRate:EXPORT_AUDIO_RATE},
+  fastStart:'in-memory'
+ });
+ let encoderError=null,encodedFrames=0;
+ const videoEncoder=new VideoEncoder({
+  output:(chunk,meta)=>muxer.addVideoChunk(chunk,meta),
+  error:e=>{encoderError=e}
+ });
+ videoEncoder.configure(videoCfg);
+ const audioEncoder=new AudioEncoder({
+  // Do not pass Safari 26's AAC decoderConfig description through. mp4-muxer
+  // already creates the correct AAC-LC AudioSpecificConfig for 48k stereo.
+  output:chunk=>muxer.addAudioChunk(chunk),
+  error:e=>{encoderError=e}
+ });
+ audioEncoder.configure(audioCfg);
+ const ec=document.createElement('canvas');ec.width=EXPORT_WIDTH;ec.height=EXPORT_HEIGHT;
+ ec.style.cssText='position:fixed;left:-3px;bottom:-3px;width:2px;height:2px;opacity:.001;pointer-events:none';
+ document.body.append(ec);const ex=ec.getContext('2d',{alpha:false,desynchronized:false});
+ const ev=document.createElement('video');ev.playsInline=true;ev.muted=true;ev.preload='auto';ev.src=runtime.videoUrl;
+ ev.style.cssText='position:fixed;left:-3px;bottom:-3px;width:2px;height:2px;opacity:.001;pointer-events:none';
+ document.body.append(ev);
+ try{
+  await waitExportVideoReady(ev);ev.pause();
+  const totalFrames=Math.ceil(runtime.project.duration*fps),frameDurUs=Math.round(1e6/fps);
+  for(let i=0;i<totalFrames;i++){
+   if(encoderError)throw encoderError;
+   const tl=Math.min(runtime.project.duration-1e-7,i/fps),clip=clipAtTimeline(tl);
+   if(!clip)throw new Error(`missing video clip at ${tl.toFixed(3)}s`);
+   const sourceTarget=clip.srcStart+(tl-clip.timelineStart);
+   let actualSource=await seekExportVideoFrame(ev,sourceTarget);
+   if(Math.abs(actualSource-sourceTarget)>.075)actualSource=await seekExportVideoFrame(ev,sourceTarget);
+   if(Math.abs(actualSource-sourceTarget)>.12)throw new Error(`source frame sync failed at ${tl.toFixed(3)}s`);
+   // seeked + video-frame callback completed before canvas draw.
+   await drawPreview(ex,EXPORT_WIDTH,EXPORT_HEIGHT,tl,ev);
+   const vf=new VideoFrame(ec,{timestamp:Math.round(i/fps*1e6),duration:frameDurUs});
+   videoEncoder.encode(vf,{keyFrame:i===0||i%(fps*2)===0});vf.close();encodedFrames++;
+   while(videoEncoder.encodeQueueSize>6)await new Promise(res=>setTimeout(res,0));
+   onProgress?.((i+1)/Math.max(1,totalFrames)*.86);
+  }
+  await videoEncoder.flush();if(encoderError)throw encoderError;
+  onProgress?.(.88);
+  await encodeExportAudio(mixedAudio,audioEncoder);if(encoderError)throw encoderError;
+  onProgress?.(.96);
+  videoEncoder.close();audioEncoder.close();muxer.finalize();
+  const blob=new Blob([target.buffer],{type:'video/mp4'});
+  if(blob.size<10000)throw new Error('export blob too small');
+  const verify=await verifyExportMp4(blob,runtime.project.duration,fps,encodedFrames);
+  onProgress?.(1);
+  const name=`${runtime.project.title.replace(/[^\w\u3000-\u9fffぁ-んァ-ヶー-]+/g,'_')}_SHURI_SHORT.mp4`;
+  return {blob,name,mime:'video/mp4',verify};
+ }finally{
+  try{videoEncoder.state!=='closed'&&videoEncoder.close()}catch{}
+  try{audioEncoder.state!=='closed'&&audioEncoder.close()}catch{}
+  ev.remove();ec.remove();
+ }
+}
+function scheduleExportAudio(){/* legacy entry retained intentionally; deterministic export uses renderExportAudioMix() */}
 function showExportResults(v,r,complete,modalEl){const body=$('.modalBody',modalEl);const wrap=document.createElement('div');wrap.innerHTML=`<div class="complete"><h2>${complete?'SHORT COMPLETE! 🎉':'書き出し未完了'}</h2><p>🎬 VIDEO ${v?'✓':'✕'}<br>🔬 RESEARCH ${r?'✓':'✕'}</p></div>${r?`<pre class="researchPre">${escapeHtml(r.txt)}</pre>`:''}<div class="miniRow" style="margin-top:10px">${v?'<button class="btn primary" id="saveVideo">🎬 VIDEO 保存</button>':''}${r?'<button class="btn" id="saveResearch">🔬 RESEARCH 保存</button>':''}<button class="btn" id="backEditExport">編集に戻る</button><button class="btn" id="homeExport">HOMEへ</button></div>`;body.append(wrap);$('.modalActions',modalEl).style.display='none';$('#saveVideo',wrap)&&($('#saveVideo',wrap).onclick=()=>saveBlob(v.blob,v.name));$('#saveResearch',wrap)&&($('#saveResearch',wrap).onclick=()=>{saveBlob(new Blob([r.txt],{type:'text/plain;charset=utf-8'}),`${runtime.project.title}_RESEARCH.txt`);setTimeout(()=>saveBlob(new Blob([r.json],{type:'application/json'}),`${runtime.project.title}_RESEARCH.json`),300)});$('#backEditExport',wrap).onclick=()=>{modalEl.remove();runtime.project.status='編集済み';db.putProject(runtime.project)};$('#homeExport',wrap).onclick=()=>{modalEl.remove();renderHome()}}
 async function saveBlob(blob,name){try{const file=new File([blob],name,{type:blob.type});if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({files:[file],title:name});return}}catch(e){if(e.name==='AbortError')return}const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
 window.SHURI_STUDIO_TEST={newProject,currentHp,missionStateAt,analyzeScript,naturalSubtitleSplit,exportResearch,runtime,BGM_DATA,EMOTIONS,ensureRequiredPresetSe,triggerAudioAt,resetAudioPass,hasBgmAsset};
