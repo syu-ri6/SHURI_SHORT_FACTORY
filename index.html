@@ -1327,7 +1327,7 @@ function bgmAt(t){return runtime.project.bgmIntervals.filter(b=>b.start<=t&&b.en
 function hasBgmAsset(key){return key==='無音'||!!BGM_DATA[key]||!!runtime.project.bgmAssets?.[key]}
 function loadBgmAsset(key){$('#fileAudio').value='';$('#fileAudio').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;const k=`bgm:${runtime.project.id}:${key}`;await db.putBlob(k,f);runtime.project.bgmAssets={...(runtime.project.bgmAssets||{}),[key]:{blobKey:k,name:f.name}};await commit(key+' BGM登録');renderPanel();toast(`${key} BGM登録 ✓`)};$('#fileAudio').click()}
 function bindBgmButton(b){let timer=null,long=false,prev=null,pid=null,finished=false;const restore=()=>{clearTimeout(timer);if(finished)return;finished=true;if(long){long=false;stopBgmOverride(prev)}};b.onpointerdown=e=>{finished=false;pid=e.pointerId;try{b.setPointerCapture(pid)}catch{};prev=bgmAt(runtime.project.playhead);timer=setTimeout(()=>{long=true;previewBgmOverride(b.dataset.bgm,prev)},420)};b.onpointerup=async e=>{clearTimeout(timer);if(long){restore();return}finished=true;await switchBgm(b.dataset.bgm)};b.onpointercancel=restore;b.onlostpointercapture=()=>{if(long)restore()}}
-async function switchBgm(key){if(key!=='無音'&&!hasBgmAsset(key)){toast(`${key} の音源を先に登録してね`);return loadBgmAsset(key)}snapshot('BGM切替');const t=runtime.project.playhead,arr=runtime.project.bgmIntervals;const current=bgmAt(t);if(current&&current.start<t&&current.end>t)current.end=t;arr.push({id:uid('bgm'),start:t,end:runtime.project.duration,key,volume:key==='無音'?0:BGM_DEFAULT_VOLUME,sourceStart:0,fadeIn:'auto',fadeOut:'auto',manualLocks:{}});cleanupBgmIntervals();lastBgmKey='';const started=await playBgmKey(key,t);await commit('BGM切替');renderPanel();if(runtime.playing&&!started)syncBgmPreview(true)}
+async function switchBgm(key){if(key!=='無音'&&!hasBgmAsset(key)){toast(`${key} の音源を先に登録してね`);return loadBgmAsset(key)}snapshot('BGM切替');const t=runtime.project.playhead,arr=runtime.project.bgmIntervals;const current=bgmAt(t);if(current&&current.start<t&&current.end>t)current.end=t;arr.push({id:uid('bgm'),start:t,end:runtime.project.duration,key,volume:key==='無音'?0:BGM_DEFAULT_VOLUME,sourceStart:0,fadeIn:'auto',fadeOut:'auto',manualLocks:{}});cleanupBgmIntervals();editorDebugBgmSelection(key,t);lastBgmKey='';const started=await playBgmKey(key,t);await commit('BGM切替');renderPanel();if(runtime.playing&&!started)syncBgmPreview(true)}
 function cleanupBgmIntervals(){runtime.project.bgmIntervals.sort((a,b)=>a.start-b.start);for(let i=0;i<runtime.project.bgmIntervals.length-1;i++)runtime.project.bgmIntervals[i].end=Math.min(runtime.project.bgmIntervals[i].end,runtime.project.bgmIntervals[i+1].start);runtime.project.bgmIntervals=runtime.project.bgmIntervals.filter(x=>x.end-x.start>.01)}
 function previewBgmOverride(key,prev){runtime._bgmOverride={key,prev};toast(`${key} 長押しプレビュー`);playBgmKey(key,runtime.project.playhead,true)}async function stopBgmOverride(prev){const back=prev||runtime._bgmOverride?.prev||bgmAt(runtime.project.playhead);runtime._bgmOverride=null;lastBgmKey='';if(back&&back.key)await playBgmKey(back.key,runtime.project.playhead);else await playBgmKey('BASE',runtime.project.playhead);lastBgmKey=(back?.id||'base')+':'+(back?.key||'BASE')}
 async function getMediaDuration(file){if(!file.type.startsWith('video'))return null;const u=URL.createObjectURL(file),v=document.createElement('video');v.preload='metadata';v.src=u;try{await new Promise((res,rej)=>{v.onloadedmetadata=res;v.onerror=rej});return Number.isFinite(v.duration)?v.duration:null}catch{return null}finally{URL.revokeObjectURL(u)}}
@@ -1392,9 +1392,9 @@ function disposeBgmGraph(){
  bgmMediaSource=null;bgmGain=null;
 }
 async function getAudioBuffer(urlOrKey,isBlob=false){const key=(isBlob?'blob:':'url:')+urlOrKey;if(runtime.audioCache.has(key))return runtime.audioCache.get(key);const p=(async()=>{const ac=await ensureAudio();let ab;if(isBlob){const b=await db.getBlob(urlOrKey);if(!b)throw new Error('missing blob');ab=await b.arrayBuffer()}else{const r=await fetch(urlOrKey);if(!r.ok)throw new Error('missing audio');ab=await r.arrayBuffer()}return ac.decodeAudioData(ab.slice(0))})();runtime.audioCache.set(key,p);return p}
-async function playSeKey(key,vol=sePresetVolume(key)){const def=SE[key];if(!def)return;try{const ac=await ensureAudio(),buf=await getAudioBuffer(def.url),src=ac.createBufferSource(),g=ac.createGain();g.gain.value=vol;src.buffer=buf;src.connect(g).connect(master);src.start()}catch{toast(`${def.label} SEを読み込めませんでした`,1600)}}
+async function playSeKey(key,vol=sePresetVolume(key)){const def=SE[key];if(!def)return;try{const ac=await ensureAudio(),buf=await getAudioBuffer(def.url),src=ac.createBufferSource(),g=ac.createGain();g.gain.value=vol;src.buffer=buf;src.connect(g).connect(master);src.start();editorDebugSeStarted(key)}catch{toast(`${def.label} SEを読み込めませんでした`,1600)}}
 function resetAudioPass(t=runtime.project?.playhead??0,includeCurrent=false){runtime._lastAudioT=includeCurrent?t-.06:t;runtime._audioPassFired=new Set();lastSeFire.clear()}
-function triggerAudioAt(t){const prev=Number.isFinite(runtime._lastAudioT)?runtime._lastAudioT:t-.06;if(!runtime._audioPassFired)runtime._audioPassFired=new Set();if(t<prev-.02){runtime._lastAudioT=t;runtime._audioPassFired.clear();lastSeFire.clear();syncBgmPreview();return}const crossed=st=>st>prev+.0005&&st<=t+.035;const fire=(id,key,vol)=>{if(runtime._audioPassFired.has(id))return;runtime._audioPassFired.add(id);lastSeFire.set(id,t);playSeKey(key,vol)};for(const e of runtime.project.soundEffects)if(crossed(e.start))fire(e.id,e.key,seBaseVolume(e));for(const p of [...runtime.project.systemEvents,...runtime.project.emotionSets])for(const ch of p.children||[]){if(ch.kind==='se'&&ch.enabled!==false){const st=p.start+(ch.offset||0),k=p.id+':'+ch.id;if(crossed(st))fire(k,ch.key,seBaseVolume(ch))}}runtime._lastAudioT=t;syncBgmPreview()}
+function triggerAudioAt(t){editorDebugSeCheck(t);const prev=Number.isFinite(runtime._lastAudioT)?runtime._lastAudioT:t-.06;if(!runtime._audioPassFired)runtime._audioPassFired=new Set();if(t<prev-.02){runtime._lastAudioT=t;runtime._audioPassFired.clear();lastSeFire.clear();syncBgmPreview();return}const crossed=st=>st>prev+.0005&&st<=t+.035;const fire=(id,key,vol)=>{if(runtime._audioPassFired.has(id))return;runtime._audioPassFired.add(id);lastSeFire.set(id,t);playSeKey(key,vol)};for(const e of runtime.project.soundEffects)if(crossed(e.start))fire(e.id,e.key,seBaseVolume(e));for(const p of [...runtime.project.systemEvents,...runtime.project.emotionSets])for(const ch of p.children||[]){if(ch.kind==='se'&&ch.enabled!==false){const st=p.start+(ch.offset||0),k=p.id+':'+ch.id;if(crossed(st))fire(k,ch.key,seBaseVolume(ch))}}runtime._lastAudioT=t;syncBgmPreview()}
 const bgmUrlCache=new Map();
 async function resolvedBgmUrl(key,forceReload=false){
  if(key==='無音')return null;
@@ -1413,7 +1413,7 @@ async function playBgmKey(key,t,temporary=false){
  if(!url){toast(`⚠ ${key} BGMを読み込めませんでした`,2200);return false}
  if(bgmAudio){try{bgmAudio.pause();bgmAudio.currentTime=0}catch{}}
  disposeBgmGraph();
- const a=new Audio();bgmAudio=a;a.preload='auto';a.playsInline=true;a.loop=true;a.src=url;
+ const a=new Audio();bgmAudio=a;a.preload='auto';a.playsInline=true;a.loop=true;a.src=url;editorDebugTrackBgm(a,key);
  // iOS SafariではHTMLMediaElement.volumeが実音量へ反映されないため、
  // BGMだけWebAudio GainNode経由で鳴らす。
  const ac=await ensureAudio();
@@ -1881,6 +1881,68 @@ function installPersistenceLifecycle(){
  setInterval(()=>{if(runtime.screen==='editor'&&!runtime.exporting&&!runtime.gesture&&!runtime._timelineScrubbing)flush()},5000);
  navigator.storage?.persist?.().catch(()=>{});
 }
+// TEMP EDITOR DEBUG: observation only; never stored in project/IndexedDB.
+const editorDebug={bgmKeys:new WeakMap(),bgmRefs:[],seCheck:null,seStarts:[],selection:null,projectId:null};
+function editorDebugTrackBgm(a,key){try{
+ editorDebug.bgmKeys.set(a,key);
+ if(typeof WeakRef==='function')editorDebug.bgmRefs.push({key,ref:new WeakRef(a)});
+ editorDebug.bgmRefs=editorDebug.bgmRefs.filter(x=>x.ref.deref()).slice(-32);
+}catch{}}
+function editorDebugSeCheck(t){try{
+ const prev=Number.isFinite(runtime._lastAudioT)?runtime._lastAudioT:t-.06,targets=[];
+ const add=(id,key,start,origin)=>{if(t>=prev-.02&&start>prev+.0005&&start<=t+.035&&!runtime._audioPassFired?.has(id))targets.push({id,key,start,origin})};
+ for(const e of runtime.project.soundEffects)add(e.id,e.key,e.start,e.parentFxId?'FX付属':'単独SE');
+ for(const [lane,parents] of [['SYSTEM',runtime.project.systemEvents],['emotion',runtime.project.emotionSets]])
+  for(const p of parents)for(const ch of p.children||[])if(ch.kind==='se'&&ch.enabled!==false)add(p.id+':'+ch.id,ch.key,p.start+(ch.offset||0),lane+':'+(p.type||p.name||p.id));
+ editorDebug.seCheck={t,prev,targets,at:Date.now()};
+}catch{}}
+function editorDebugSeStarted(key){try{editorDebug.seStarts.push({key,t:runtime.project?.playhead,at:Date.now()});editorDebug.seStarts=editorDebug.seStarts.slice(-8)}catch{}}
+function editorDebugBgmSelection(key,t){try{
+ editorDebug.selection={key,t,at:Date.now(),projectId:runtime.project.id,resolved:bgmAt(t).key,
+ intervals:runtime.project.bgmIntervals.filter(b=>b.start<=t&&b.end>t).map(b=>({key:b.key,start:b.start,end:b.end,id:b.id}))};
+}catch{}}
+function editorDebugText(){
+ const p=runtime.project,t=p.playhead||0,v=document.getElementById('sourceVideo'),n=x=>typeof x==='number'&&Number.isFinite(x)?x.toFixed(3):String(x??'—');
+ const seCount=parents=>{const all=parents.flatMap(p=>(p.children||[]).filter(c=>c.kind==='se'));return `${all.length}（有効 ${all.filter(c=>c.enabled!==false).length}）`};
+ const intervals=p.bgmIntervals.filter(b=>b.start<=t&&b.end>t),actual=[];
+ for(const x of editorDebug.bgmRefs){const a=x.ref.deref();if(a&&!a.paused&&!a.ended)actual.push(x.key+(a===bgmAudio?' [現参照]':' [旧参照]'))}
+ if(bgmAudio&&!bgmAudio.paused&&!bgmAudio.ended&&!actual.some(x=>x.endsWith('[現参照]')))actual.push((editorDebug.bgmKeys.get(bgmAudio)||'不明')+' [現参照]');
+ const check=editorDebug.seCheck,sel=editorDebug.selection?.projectId===p.id?editorDebug.selection:null;
+ const rows=[`DEBUG E1 | ${new Date().toLocaleTimeString()} | 0.5秒更新`,
+ `playhead=${n(t)} runtime.playing=${runtime.playing}`,'— sourceVideo —',
+ ...(v?[`paused=${v.paused} muted=${v.muted} volume=${n(v.volume)}`,`currentTime=${n(v.currentTime)} currentSrc=${!!v.currentSrc}`,`readyState=${v.readyState} networkState=${v.networkState}`,`playbackRate=${n(v.playbackRate)} seeking=${v.seeking}`,`error=${v.error?.code??'なし'}`]:['sourceVideoなし']),
+ '— Audio —',`bgmAt(playhead).key=${bgmAt(t).key}${intervals.length?'':' [区間なし→既定値]'}`,
+ `区間データ=${intervals.map(b=>`${b.key}[${n(b.start)}–${n(b.end)}]`).join(' / ')||'なし'}`,
+ `再生中BGM=${actual.join(' / ')||'なし（観測上）'}`,
+ `bgmAudio参照key=${bgmAudio?(editorDebug.bgmKeys.get(bgmAudio)||'不明'):'なし'} paused=${bgmAudio?.paused??'—'}`,
+ `BGM time=${n(bgmAudio?.currentTime)} pending=${runtime._pendingBgm?.key??'なし'} override=${runtime._bgmOverride?.key??'なし'}`,
+ `AudioContext=${audioCtx?.state??'なし'}`,
+ `project.soundEffects=${p.soundEffects.length}`,
+ `SYSTEM内SE=${seCount(p.systemEvents)}`,`emotion内SE=${seCount(p.emotionSets)}`,
+ `SE発火対象（直近判定）=${check?check.targets.map(x=>`${x.key}@${n(x.start)} ${x.origin}`).join(' / ')||'なし':'未判定'}`,
+ `判定範囲=${check?`${n(check.prev)}→${n(check.t)}（${n((Date.now()-check.at)/1000)}秒前）`:'—'}`,
+ `SE実開始（直近5秒）=${editorDebug.seStarts.filter(x=>Date.now()-x.at<5000).map(x=>`${x.key}@${n(x.t)}`).join(' / ')||'なし'}`,
+ '— BGM選択直後の記録（保持） —',
+ ...(sel?[`選択=${sel.key} 適用時刻=${n(sel.t)}`,`直後のbgmAt=${sel.resolved}`,`直後の区間=${sel.intervals.map(b=>`${b.key}[${n(b.start)}–${n(b.end)}]`).join(' / ')||'なし'}`,`同じ選択時刻を今再確認=${bgmAt(sel.t).key}`]:['まだBGM切替の適用なし']),
+ '※再生中＝要素のpaused/ended判定。実際の可聴音は実機で確認。'];
+ return rows.join('\n');
+}
+function editorDebugRefresh(){try{
+ let box=document.getElementById('editorDebugPanel');
+ if(runtime.screen!=='editor'||runtime.preview||runtime.exporting||!runtime.project){if(box)box.hidden=true;return}
+ if(editorDebug.projectId!==runtime.project.id){editorDebug.projectId=runtime.project.id;editorDebug.seCheck=null;editorDebug.seStarts=[]}
+ if(!box){
+  box=document.createElement('details');box.id='editorDebugPanel';box.open=true;
+  box.style.cssText='position:fixed;z-index:390;right:6px;top:calc(env(safe-area-inset-top) + 60px);width:min(360px,94vw);max-height:42dvh;overflow:auto;background:#10131af2;color:#e9fff1;border:1px solid #72e3aa;border-radius:8px;padding:6px;font:11px/1.45 ui-monospace,monospace;text-align:left;box-sizing:border-box;overscroll-behavior:contain';
+  const title=document.createElement('summary');title.textContent='DEBUG E1（タップで開閉）';title.style.cssText='cursor:pointer;font-weight:bold;min-height:24px';
+  const pre=document.createElement('pre');pre.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0;font:inherit;color:inherit;user-select:text';
+  box.append(title,pre);document.body.append(box);
+ }
+ box.hidden=false;if(box.open)box.querySelector('pre').textContent=editorDebugText();
+}catch(e){console.warn('Editor debug display',e)}}
+setInterval(editorDebugRefresh,500);
+// END TEMP EDITOR DEBUG
+
 installPersistenceLifecycle();
 if(!globalThis.__SHURI_TEST__)boot().catch(e=>{console.error(e);document.body.innerHTML='<div style="padding:20px;color:white">起動できませんでした🥲<br>'+escapeHtml(String(e))+'</div>'});
 })();
