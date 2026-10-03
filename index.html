@@ -1181,7 +1181,18 @@ function currentHp(t){let hp=100;runtime.project.systemEvents.filter(e=>e.type==
 function missionStateAt(t){let active=null;const broken=[];runtime.project.systemEvents.filter(e=>['MISSION_START','MISSION_CLEAR'].includes(e.type)&&e.start<=t).sort((a,b)=>a.start-b.start).forEach(e=>{if(e.type==='MISSION_START')active={id:e.missionId,name:e.text,startEvent:e.id};else if(active&&active.id===e.missionId)active=null;else broken.push(e)});return {active,broken}}
 function activeFxAt(t){const all=[...runtime.project.effects.filter(e=>visibleAt(e,t))];for(const p of [...runtime.project.systemEvents,...runtime.project.emotionSets].filter(e=>visibleAt(e,t)))for(const ch of p.children||[])if(ch.kind==='fx'&&ch.enabled!==false){const st=p.start+(ch.offset||0),en=st+(ch.duration||.3);if(t>=st&&t<=en)all.push({...ch,start:st,end:en})}const by={};for(const e of all)if(!by[e.type]||strengthNum(e.strength)>strengthNum(by[e.type].strength))by[e.type]=e;return by}
 function applyGlobalFxTransform(ctx,w,h,t){const fx=activeFxAt(t);const sh=fx.shake,zm=fx.zoom;if(sh){const p=(t-sh.start)/Math.max(.01,sh.end-sh.start),amp=7*strengthNum(sh.strength)*(1-p);ctx.translate(Math.sin(t*93)*amp,Math.cos(t*77)*amp)}if(zm){const p=clamp((t-zm.start)/Math.max(.01,zm.end-zm.start),0,1),z=1+.075*strengthNum(zm.strength)*Math.sin(Math.PI*p);ctx.translate(w/2,h/2);ctx.scale(z,z);ctx.translate(-w/2,-h/2)}if(fx.blur)ctx.filter=`blur(${2.5*strengthNum(fx.blur.strength)}px)`}
-async function drawPreview(ctxOverride=null,w=540,h=960,tOverride=null,videoOverride=null){const c=ctxOverride?null:$('#previewCanvas');const ctx=ctxOverride||c?.getContext('2d');if(!ctx)return;const t=tOverride??runtime.project?.playhead??0,v=videoOverride||$('#sourceVideo');ctx.save();ctx.clearRect(0,0,w,h);ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);applyGlobalFxTransform(ctx,w,h,t);
+// Editor only: prevent RAF/timeupdate/scrub draws from interleaving across awaits.
+// Explicit preview/export contexts continue through the original renderer unchanged.
+const editorPreviewJobs=new WeakMap();
+async function drawPreview(ctxOverride=null,w=540,h=960,tOverride=null,videoOverride=null){const c=ctxOverride?null:$('#previewCanvas');const ctx=ctxOverride||c?.getContext('2d');if(!ctx)return;
+ if(!ctxOverride){
+  const pending=editorPreviewJobs.get(c);if(pending)return pending;
+  const job=drawPreview(ctx,w,h,tOverride,videoOverride).then(()=>{
+   if(c===$('#previewCanvas'))updateSelectionBox(w,h);
+  }).finally(()=>editorPreviewJobs.delete(c));
+  editorPreviewJobs.set(c,job);return job;
+ }
+const t=tOverride??runtime.project?.playhead??0,v=videoOverride||$('#sourceVideo');ctx.save();ctx.clearRect(0,0,w,h);ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);applyGlobalFxTransform(ctx,w,h,t);
  if(v&&v.readyState>=2){const vw=v.videoWidth||w,vh=v.videoHeight||h,vr=vw/vh,tr=w/h,fit=runtime.project?.video?.fitMode||'contain';let dw,dh,dx,dy;if(fit==='cover'){if(vr>tr){dh=h;dw=h*vr;dy=0;dx=(w-dw)/2}else{dw=w;dh=w/vr;dx=0;dy=(h-dh)/2}}else{if(vr>tr){dw=w;dh=w/vr;dx=0;dy=(h-dh)/2}else{dh=h;dw=h*vr;dy=0;dx=(w-dw)/2}}ctx.drawImage(v,dx,dy,dw,dh)}
  await drawBaseUI(ctx,w,h);
  await drawSystemLayer(ctx,w,h,t);
