@@ -1908,7 +1908,7 @@ function editorDebugText(){
  for(const x of editorDebug.bgmRefs){const a=x.ref.deref();if(a&&!a.paused&&!a.ended)actual.push(x.key+(a===bgmAudio?' [現参照]':' [旧参照]'))}
  if(bgmAudio&&!bgmAudio.paused&&!bgmAudio.ended&&!actual.some(x=>x.endsWith('[現参照]')))actual.push((editorDebug.bgmKeys.get(bgmAudio)||'不明')+' [現参照]');
  const check=editorDebug.seCheck,sel=editorDebug.selection?.projectId===p.id?editorDebug.selection:null;
- const rows=[`DEBUG E1 | ${new Date().toLocaleTimeString()} | 0.5秒更新`,
+ const rows=[`DEBUG E2 | ${new Date().toLocaleTimeString()} | 0.5秒更新`,
  `playhead=${n(t)} runtime.playing=${runtime.playing}`,`元VIDEO単体テスト=${runtime._debugSourceVideoTest?'実行中':'停止'}`,'— sourceVideo —',
  ...(v?[`paused=${v.paused} muted=${v.muted} volume=${n(v.volume)}`,`currentTime=${n(v.currentTime)} currentSrc=${!!v.currentSrc}`,`readyState=${v.readyState} networkState=${v.networkState}`,`playbackRate=${n(v.playbackRate)} seeking=${v.seeking}`,`error=${v.error?.code??'なし'}`]:['sourceVideoなし']),
  '— Audio —',`bgmAt(playhead).key=${bgmAt(t).key}${intervals.length?'':' [区間なし→既定値]'}`,
@@ -1934,9 +1934,9 @@ function editorDebugRefresh(){try{
  if(!box){
   box=document.createElement('details');box.id='editorDebugPanel';box.open=true;
   box.style.cssText='position:fixed;z-index:390;right:6px;top:calc(env(safe-area-inset-top) + 60px);width:min(360px,94vw);max-height:42dvh;overflow:auto;background:#10131af2;color:#e9fff1;border:1px solid #72e3aa;border-radius:8px;padding:6px;font:11px/1.45 ui-monospace,monospace;text-align:left;box-sizing:border-box;overscroll-behavior:contain';
-  const title=document.createElement('summary');title.textContent='DEBUG E1（タップで開閉）';title.style.cssText='cursor:pointer;font-weight:bold;min-height:24px';
-  const testButton=document.createElement('button');testButton.id='editorDebugSourceTestButton';testButton.type='button';testButton.textContent='元VIDEO単体テスト開始';testButton.style.cssText='display:block;width:100%;margin:5px 0;padding:7px;background:#164b35;color:#fff;border:1px solid #72e3aa;border-radius:6px;font:inherit;cursor:pointer';testButton.onclick=()=>runtime._debugSourceVideoTest?editorDebugEndSourceTest():editorDebugBeginSourceTest();const testResult=document.createElement('div');testResult.id='editorDebugSourceTestResult';testResult.style.cssText='color:#ffd';const pre=document.createElement('pre');pre.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0;font:inherit;color:inherit;user-select:text';
-  box.append(title,testButton,testResult,pre);document.body.append(box);
+  const title=document.createElement('summary');title.textContent='DEBUG E2（タップで開閉）';title.style.cssText='cursor:pointer;font-weight:bold;min-height:24px';
+  const testButton=document.createElement('button');testButton.id='editorDebugSourceTestButton';testButton.type='button';testButton.textContent='元VIDEO単体テスト開始';testButton.style.cssText='display:block;width:100%;margin:5px 0;padding:7px;background:#164b35;color:#fff;border:1px solid #72e3aa;border-radius:6px;font:inherit;cursor:pointer';testButton.onclick=()=>runtime._debugSourceVideoTest?editorDebugEndSourceTest():editorDebugBeginSourceTest();const testResult=document.createElement('div');testResult.id='editorDebugSourceTestResult';testResult.style.cssText='color:#ffd';const rawButton=document.createElement('button');rawButton.id='editorDebugRawVideoButton';rawButton.type='button';rawButton.textContent='RAW VIDEOテスト開始';rawButton.style.cssText='display:block;width:100%;margin:5px 0;padding:7px;background:#3b2856;color:#fff;border:1px solid #c4a0ff;border-radius:6px;font:inherit;cursor:pointer';rawButton.onclick=()=>editorRawVideoState?editorDebugEndRawVideo():editorDebugBeginRawVideo();const pre=document.createElement('pre');pre.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0;font:inherit;color:inherit;user-select:text';
+  box.append(title,testButton,testResult,rawButton,pre);document.body.append(box);
  }
  box.hidden=false;if(box.open)box.querySelector('pre').textContent=editorDebugText();
 }catch(e){console.warn('Editor debug display',e)}}
@@ -1974,6 +1974,67 @@ async function editorDebugEndSourceTest(){
  if(state.wasPaused){try{v.pause()}catch{}runtime.playing=false;const play=document.getElementById('playBtn');if(play)play.textContent='▶'}
  else {runtime.playing=!v.paused;const play=document.getElementById('playBtn');if(play)play.textContent=runtime.playing?'Ⅱ':'▶'}
  runtime._debugSourceVideoTest=false;drawPreview();
+}
+
+// DEBUG ONLY: play the persisted source Blob in a fresh, unsynchronized native video element.
+let editorRawVideoState=null,editorRawVideoTimer=null,editorRawMuteTimer=null;
+function editorRawVideoTracks(v){try{
+ if(!('audioTracks' in v))return '取得不可（audioTracks APIなし）';
+ const tracks=v.audioTracks;if(!tracks)return '取得不可';
+ const rows=Array.from(tracks).map((a,i)=>({index:i,id:a.id||'',kind:a.kind||'',label:a.label||'',language:a.language||'',enabled:!!a.enabled}));
+ return `取得可能（${rows.length}件）${rows.length?' '+JSON.stringify(rows):''}`;
+}catch(e){return '参照エラー: '+(e?.message||e)}}
+function editorRawVideoInfo(){try{
+ const s=editorRawVideoState;if(!s)return;const v=s.rawVideo,n=x=>typeof x==='number'&&Number.isFinite(x)?x.toFixed(3):String(x??'—');
+ const err=v.error?`code=${v.error.code} message=${v.error.message||'—'}`:'なし';
+ s.info.textContent=[`Blob type=${s.blob.type||'(空)'}`,`Blob size=${s.blob.size} bytes`,`duration=${n(v.duration)}`,`videoWidth × videoHeight=${v.videoWidth||0} × ${v.videoHeight||0}`,`readyState=${v.readyState}`,`networkState=${v.networkState}`,`error=${err}`,`muted=${v.muted}`,`volume=${n(v.volume)}`,`currentTime=${n(v.currentTime)}`,`audioTracks=${editorRawVideoTracks(v)}`].join('\n');
+}catch(e){const el=editorRawVideoState?.info;if(el)el.textContent='DEBUG取得エラー: '+(e?.message||e)}}
+function editorRawSilenceAudio(){const s=editorRawVideoState;if(!s)return;for(const a of editorDebugBgmElements()){
+ if(!s.bgm.has(a))s.bgm.set(a,{paused:a.paused,muted:a.muted,volume:a.volume,time:a.currentTime});
+ try{a.pause();a.muted=true}catch{}
+ }}
+async function editorDebugBeginRawVideo(){
+ if(editorRawVideoState)return;
+ const button=document.getElementById('editorDebugRawVideoButton');if(button){button.disabled=true;button.textContent='保存Blob取得中…'}
+ try{
+  const p=runtime.project,key=p?.video?.blobKey;if(!key)throw new Error('project.video.blobKey がありません');
+  const blob=await db.getBlob(key);if(!(blob instanceof Blob))throw new Error('IndexedDBに保存済みVIDEO Blobがありません');
+  const source=document.getElementById('sourceVideo'),canvas=document.getElementById('previewCanvas');if(!source||!canvas)throw new Error('Editor VIDEO / Canvas が見つかりません');
+  if(runtime._debugSourceVideoTest)await editorDebugEndSourceTest();
+  const stage=document.createElement('section');stage.id='editorRawVideoStage';stage.style.cssText='position:fixed;inset:0;z-index:9999;background:#08090c;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px);box-sizing:border-box;font:13px/1.4 ui-monospace,monospace';
+  const heading=document.createElement('div');heading.textContent='RAW VIDEO（保存Blob / Editor同期なし）';heading.style.cssText='font-weight:bold;text-align:center';
+  const close=document.createElement('button');close.type='button';close.textContent='RAW VIDEOテスト終了';close.style.cssText='padding:8px 14px;border:1px solid #c4a0ff;border-radius:8px;background:#3b2856;color:white;font:inherit';close.onclick=()=>editorDebugEndRawVideo();
+  const rawVideo=document.createElement('video');rawVideo.setAttribute('controls','');rawVideo.setAttribute('playsinline','');rawVideo.style.cssText='display:block;width:min(94vw,520px);max-height:52vh;object-fit:contain;background:#000';
+  const info=document.createElement('pre');info.style.cssText='width:min(94vw,520px);max-height:26vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;margin:0;padding:8px;background:#15171d;border:1px solid #555;border-radius:8px;box-sizing:border-box;font:11px/1.45 ui-monospace,monospace';
+  stage.append(heading,close,rawVideo,info);
+  const state={blob,rawVideo,stage,info,source,canvas,sourceStyle:source.getAttribute('style'),canvasStyle:canvas.getAttribute('style'),wasPaused:source.paused,wasPlaying:runtime.playing,audioState:audioCtx?.state||'none',bgm:new Map(),projectId:p.id,url:''};
+  editorRawVideoState=state;runtime._debugSourceVideoTest=true;
+  editorRawSilenceAudio();editorRawMuteTimer=setInterval(editorRawSilenceAudio,100);
+  if(audioCtx&&audioCtx.state==='running')audioCtx.suspend().catch(()=>{});
+  if(!source.paused)source.pause();runtime.playing=false;
+  source.style.display='none';canvas.style.display='none';
+  state.url=URL.createObjectURL(blob);rawVideo.src=state.url;
+  document.body.append(stage);
+  if(button){button.disabled=false;button.textContent='RAW VIDEOテスト終了';}
+  editorRawVideoInfo();editorRawVideoTimer=setInterval(editorRawVideoInfo,400);
+ }catch(e){
+  const b=document.getElementById('editorDebugRawVideoButton');if(b){b.disabled=false;b.textContent='RAW VIDEOテスト開始'}
+  const out=document.getElementById('editorDebugSourceTestResult');if(out)out.textContent='RAW VIDEO開始失敗: '+(e?.message||e);
+ }
+}
+async function editorDebugEndRawVideo(){
+ const s=editorRawVideoState;if(!s)return;editorRawVideoState=null;
+ clearInterval(editorRawVideoTimer);editorRawVideoTimer=null;clearInterval(editorRawMuteTimer);editorRawMuteTimer=null;
+ try{s.rawVideo.pause();s.rawVideo.removeAttribute('src');s.rawVideo.load()}catch{}
+ s.stage.remove();if(s.url)URL.revokeObjectURL(s.url);
+ if(s.sourceStyle===null)s.source.removeAttribute('style');else s.source.setAttribute('style',s.sourceStyle);
+ if(s.canvasStyle===null)s.canvas.removeAttribute('style');else s.canvas.setAttribute('style',s.canvasStyle);
+ for(const [a,prior] of s.bgm){try{a.muted=prior.muted;a.volume=prior.volume;if(Number.isFinite(prior.time))a.currentTime=prior.time;if(!prior.paused)await a.play()}catch{}}
+ if(audioCtx&&s.audioState==='running'&&audioCtx.state==='suspended')try{await audioCtx.resume()}catch{}
+ if(s.wasPaused){try{s.source.pause()}catch{}runtime.playing=false}else{try{await s.source.play();runtime.playing=!s.source.paused}catch{runtime.playing=false}}
+ runtime._lastAudioT=runtime.project?.playhead??0;runtime._audioPassFired=new Set();lastSeFire.clear();
+ runtime._debugSourceVideoTest=false;drawPreview();
+ const button=document.getElementById('editorDebugRawVideoButton');if(button){button.disabled=false;button.textContent='RAW VIDEOテスト開始'}
 }
 
 setInterval(editorDebugRefresh,500);
